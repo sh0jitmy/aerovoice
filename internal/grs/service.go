@@ -126,6 +126,7 @@ func NewService(cfg *config.GRSConfig) (*Service, error) {
 
 	// Initialize RTP Session for GRS
 	rtpCfg := media.RTPSessionConfig{
+		LocalHost:   cfg.GRS.RTPHost,
 		LocalPort:   cfg.GRS.RTPPort,
 		PayloadType: codec.PayloadTypePCMA,
 		Ptime:       svc.ptime,
@@ -265,6 +266,7 @@ type StateSnapshot struct {
 	RxLevelDB        float64                   `json:"rx_level_db"`
 	TxSQUActive      bool                      `json:"tx_squ_active"`
 	AudioSource      string                    `json:"audio_source"`
+	VCSSIPURI        string                    `json:"vcs_sip_uri"`
 	Ptime            int                       `json:"ptime"`
 	InjJitterMs      int                       `json:"inj_jitter_ms"`
 	InjLossPct       int                       `json:"inj_loss_pct"`
@@ -300,6 +302,7 @@ func (s *Service) GetSnapshot() StateSnapshot {
 		RxLevelDB:        math.Round(s.rxAudioLevelDB*10) / 10,
 		TxSQUActive:      s.txSQUActive,
 		AudioSource:      s.audioSource,
+		VCSSIPURI:        s.cfg.GRS.VCSSIPURI,
 		Ptime:            s.ptime,
 		InjJitterMs:      s.injJitterMs,
 		InjLossPct:       s.injLossPct,
@@ -468,4 +471,9 @@ func (s *Service) ClearLogs() {
 	s.eventLogs = make([]LogEntry, 0, 100)
 	s.logMu.Unlock()
 	s.logEvent("SYS", "INT", "INFO", "GRS event logs cleared by user")
+}
+
+// Config returns the GRS configuration.
+func (s *Service) Config() *config.GRSConfig {
+	return s.cfg
 }

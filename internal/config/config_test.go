@@ -97,4 +97,31 @@ grs:
 	assert.True(t, cfg.GRS.LoopbackEcho)
 	assert.Equal(t, 15, cfg.GRS.Impairment.JitterMs)
 	assert.Equal(t, 5, cfg.GRS.Impairment.LossPercent)
+	assert.Equal(t, "sip:101@127.0.0.1:5060", cfg.GRS.VCSSIPURI)
+}
+
+func TestConfig_EnvOverrides(t *testing.T) {
+	t.Setenv("AEROVOICE_VCS_SIP_PORT", "15060")
+	t.Setenv("AEROVOICE_VCS_WEB_PORT", "18082")
+	t.Setenv("AEROVOICE_GRS_SIP_PORT", "15070")
+	t.Setenv("AEROVOICE_GRS_VCS_SIP_URI", "sip:custom@10.0.0.1:5060")
+
+	tmpDir := t.TempDir()
+	vcsPath := filepath.Join(tmpDir, "vcs.yaml")
+	err := os.WriteFile(vcsPath, []byte("vcs:\n  sip_port: 5060\n  web_port: 8082\n"), 0o600)
+	require.NoError(t, err)
+
+	vcsCfg, err := LoadVCSConfig(vcsPath)
+	require.NoError(t, err)
+	assert.Equal(t, 15060, vcsCfg.VCS.SIPPort)
+	assert.Equal(t, 18082, vcsCfg.VCS.WebPort)
+
+	grsPath := filepath.Join(tmpDir, "grs.yaml")
+	err = os.WriteFile(grsPath, []byte("grs:\n  sip_port: 5070\n"), 0o600)
+	require.NoError(t, err)
+
+	grsCfg, err := LoadGRSConfig(grsPath)
+	require.NoError(t, err)
+	assert.Equal(t, 15070, grsCfg.GRS.SIPPort)
+	assert.Equal(t, "sip:custom@10.0.0.1:5060", grsCfg.GRS.VCSSIPURI)
 }

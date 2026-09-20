@@ -71,6 +71,7 @@ type RTPSession struct {
 
 // RTPSessionConfig holds parameters to initialize an RTPSession.
 type RTPSessionConfig struct {
+	LocalHost      string
 	LocalPort      int
 	RemoteHost     string
 	RemotePort     int
@@ -83,14 +84,18 @@ type RTPSessionConfig struct {
 
 // NewRTPSession creates and binds an RTP UDP session.
 func NewRTPSession(cfg RTPSessionConfig) (*RTPSession, error) {
-	localAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("0.0.0.0:%d", cfg.LocalPort))
+	bindHost := cfg.LocalHost
+	if bindHost == "" {
+		bindHost = "0.0.0.0"
+	}
+	localAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", bindHost, cfg.LocalPort))
 	if err != nil {
 		return nil, fmt.Errorf("invalid local address: %w", err)
 	}
 
 	conn, err := net.ListenUDP("udp", localAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to bind UDP port %d: %w", cfg.LocalPort, err)
+		return nil, fmt.Errorf("failed to bind UDP port %s:%d: %w", bindHost, cfg.LocalPort, err)
 	}
 
 	var remoteAddr *net.UDPAddr

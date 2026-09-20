@@ -342,6 +342,7 @@ func (s *VCSService) ConnectChannel(ctx context.Context, channelID string) error
 	s.LogEvent("SIP", "RX", "INFO", fmt.Sprintf("[%s] Received 200 OK from %s -> Session Established", ch.cfg.Name, ch.cfg.GRSSIPURI))
 
 	rtpSess, err := media.NewRTPSession(media.RTPSessionConfig{
+		LocalHost:      vcsCore.RTPHost,
 		LocalPort:      localRTPPort,
 		RemoteHost:     answer.IP,
 		RemotePort:     answer.Port,
@@ -682,6 +683,7 @@ func (s *VCSService) DialURI(ctx context.Context, targetURI string, mode string)
 	toneGen := media.NewToneGenerator()
 
 	rtpSess, err := media.NewRTPSession(media.RTPSessionConfig{
+		LocalHost:      vcsCore.RTPHost,
 		LocalPort:      localRTPPort,
 		RemoteHost:     answer.IP,
 		RemotePort:     answer.Port,

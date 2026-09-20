@@ -1,10 +1,16 @@
 vcs:
+  # VCS SIP Server (ED-137 Radio & Telephone Signaling)
   sip_host: "127.0.0.1"
   sip_port: 5060
+
+  # VCS RTP Server base port (Dynamic allocations for radio and telephone calls)
   rtp_host: "127.0.0.1"
   rtp_port_start: 10000
+
+  # VCS Web Management & Controller Console
   web_host: "0.0.0.0"
   web_port: 8082
+
   default_ptime: 10
   default_jitter_buffer_ms: 40
 

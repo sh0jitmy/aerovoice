@@ -45,7 +45,7 @@ const IndexHTML = `<!DOCTYPE html>
                 <button id="btn-manual" class="btn-secondary" onclick="toggleManualModal()" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
                     <span class="icon">&#128214;</span> 操作マニュアル
                 </button>
-                <button id="btn-audio-init" class="btn-neon-small" onclick="initWebAudio()">
+                <button id="btn-audio-init" class="btn-neon-small" onclick="toggleWebAudio()">
                     <span class="icon">&#128266;</span> Enable Audio
                 </button>
             </div>
@@ -235,7 +235,7 @@ const IndexHTML = `<!DOCTYPE html>
 
                 <h3>2. 2画面インタラクティブ検証の手順 (5分)</h3>
                 <ol style="padding-left:1.5rem; margin-bottom:1.5rem; line-height:1.8;">
-                    <li><strong>画面の準備:</strong> ブラウザを左右に2つ並べ、左で <code>http://127.0.0.1:8082</code> (VCS)、右で <code>http://127.0.0.1:8081</code> (GRS) を開きます。画面右上の <strong>「🔊 Enable Audio」</strong> をクリックして音声を有効化します。</li>
+                    <li><strong>画面の準備:</strong> ブラウザを左右に2つ並べ、左で <code>http://127.0.0.1:8082</code> (VCS)、右で <code>http://127.0.0.1:8081</code> (GRS) を開きます。画面右上の <strong>「🔊 Enable Audio」</strong> をクリックして音声を有効化（ON）します（再度クリックすることでいつでも OFF に切り替えられます）。</li>
                     <li><strong>無線発信 (PTT送信):</strong> 左画面の <code>TWR Main</code> で「<strong>Connect to GRS</strong>」をクリック &rarr; 「<strong>PUSH TO TALK</strong>」ボタンまたは <strong>スペースキー長押し</strong> で発信します。右画面（GRS）の VU メーターが振れ、PCスピーカーから受話音が流れます。</li>
                     <li><strong>無線受信 (SQU受信 & FFT):</strong> 右画面（GRS）の「<strong>Squelch Downlink</strong>」スイッチを ON にします &rarr; 左画面（VCS）の <strong>SQU ランプが点灯</strong> し、スピーカーから受信音が鳴り、画面右の <strong>FFT スペクトラム（Canvas）</strong> に 400Hz の綺麗なピークが描画されます。</li>
                     <li><strong>直通電話 (Telephony DA):</strong> 上部「<strong>Telephony (DA)</strong>」タブを開き、「<strong>1kHz Tone Test Call</strong>」または「<strong>300ms Echo Loopback Test</strong>」をクリックします &rarr; 全二重通話とジッタ測定が実行されます。</li>
@@ -507,6 +507,17 @@ body {
     transition: all 0.2s;
 }
 .btn-neon-small:hover { background: var(--color-cyan); color: #000; box-shadow: 0 0 10px var(--color-cyan); }
+.btn-neon-small.active {
+    background: rgba(0, 240, 255, 0.25);
+    color: #00f0ff;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+.btn-neon-small.muted {
+    background: rgba(100, 116, 139, 0.2);
+    border-color: #64748b;
+    color: #94a3b8;
+    box-shadow: none;
+}
 .btn-secondary {
     background: #374151;
     border: 1px solid #4b5563;
@@ -835,59 +846,101 @@ function handleEventMessage(msg) {
     }
 }
 
-// Web Audio API Setup
-async function initWebAudio() {
-    if (audioCtx) return;
-    try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.8;
+// Web Audio API Setup & Toggle
+let isAudioActive = false;
+let nextPlayTime = 0;
 
-        // Try getting microphone access
+async function toggleWebAudio() {
+    const btn = document.getElementById('btn-audio-init');
+    if (!audioCtx) {
         try {
-            micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, sampleRate: 8000 } });
-            const micSource = audioCtx.createMediaStreamSource(micStream);
-            
-            // Script processor to sample PCM 16-bit
-            const processor = audioCtx.createScriptProcessor(512, 1, 1);
-            processor.onaudioprocess = (e) => {
-                if (isPTTActive && ws && ws.readyState === WebSocket.OPEN) {
-                    const inputData = e.inputBuffer.getChannelData(0);
-                    const pcm16 = new Int16Array(inputData.length);
-                    for (let i = 0; i < inputData.length; i++) {
-                        let s = Math.max(-1, Math.min(1, inputData[i]));
-                        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
+
+            // Try getting microphone access
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, sampleRate: 8000 } });
+                const micSource = audioCtx.createMediaStreamSource(micStream);
+                
+                // Script processor to sample PCM 16-bit
+                const processor = audioCtx.createScriptProcessor(512, 1, 1);
+                processor.onaudioprocess = (e) => {
+                    if (isAudioActive && isPTTActive && ws && ws.readyState === WebSocket.OPEN) {
+                        const inputData = e.inputBuffer.getChannelData(0);
+                        const pcm16 = new Int16Array(inputData.length);
+                        for (let i = 0; i < inputData.length; i++) {
+                            let s = Math.max(-1, Math.min(1, inputData[i]));
+                            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                        }
+                        ws.send(pcm16.buffer);
                     }
-                    ws.send(pcm16.buffer);
-                }
-            };
-            micSource.connect(processor);
-            processor.connect(audioCtx.destination);
-        } catch (e) {
-            console.warn('Microphone access denied or unavailable, synthetic tone will be used for PTT:', e);
+                };
+                micSource.connect(processor);
+                processor.connect(audioCtx.destination);
+            } catch (e) {
+                console.warn('Microphone access denied or unavailable, synthetic tone will be used for PTT:', e);
+            }
+
+            startSpectrumRender();
+        } catch (err) {
+            console.error('Failed to init Web Audio:', err);
+            return;
         }
+    }
 
-        document.getElementById('btn-audio-init').innerText = 'Audio Ready';
-        document.getElementById('btn-audio-init').disabled = true;
-
-        startSpectrumRender();
-    } catch (err) {
-        console.error('Failed to init Web Audio:', err);
+    if (isAudioActive) {
+        // Turn OFF
+        if (audioCtx.state === 'running') {
+            await audioCtx.suspend();
+        }
+        isAudioActive = false;
+        if (btn) {
+            btn.innerHTML = '<span class="icon">&#128263;</span> Audio OFF';
+            btn.classList.remove('active');
+            btn.classList.add('muted');
+        }
+    } else {
+        // Turn ON
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+        isAudioActive = true;
+        nextPlayTime = audioCtx.currentTime + 0.025;
+        if (btn) {
+            btn.innerHTML = '<span class="icon">&#128266;</span> Audio ON';
+            btn.classList.remove('muted');
+            btn.classList.add('active');
+        }
     }
 }
 
+// Backward compatibility for existing buttons or scripts
+function initWebAudio() {
+    return toggleWebAudio();
+}
+
 function handleBinaryAudio(arrayBuffer) {
-    if (!audioCtx) return;
+    if (!audioCtx || !isAudioActive) return;
 
     const pcm16 = new Int16Array(arrayBuffer);
-    const audioBuf = audioCtx.createBuffer(1, pcm16.length, 8000);
-    const channelData = audioBuf.getChannelData(0);
+    const float32Array = new Float32Array(pcm16.length);
 
     let sumSquares = 0;
     for (let i = 0; i < pcm16.length; i++) {
-        channelData[i] = pcm16[i] / 32768.0;
-        sumSquares += channelData[i] * channelData[i];
+        const val = pcm16[i] / 32768.0;
+        float32Array[i] = val;
+        sumSquares += val * val;
+    }
+
+    const audioBuf = audioCtx.createBuffer(1, float32Array.length, 8000);
+    audioBuf.copyToChannel(float32Array, 0);
+
+    // Seamless scheduling to eliminate packet jitter & overlap distortion
+    const now = audioCtx.currentTime;
+    if (nextPlayTime < now) {
+        nextPlayTime = now + 0.025; // 25ms small jitter buffer
     }
 
     // Playback
@@ -895,7 +948,8 @@ function handleBinaryAudio(arrayBuffer) {
     source.buffer = audioBuf;
     source.connect(analyser);
     analyser.connect(audioCtx.destination);
-    source.start();
+    source.start(nextPlayTime);
+    nextPlayTime += audioBuf.duration;
 
     // VU meter
     const rms = Math.sqrt(sumSquares / pcm16.length);
