@@ -480,10 +480,17 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
       const btn = document.getElementById('btn-speaker');
       if (isSpeakerOn) {
         initAudio();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         btn.innerText = '🔊 Speaker: ON';
         btn.classList.add('active');
       } else {
+        if (audioCtx) {
+          try {
+            audioCtx.close();
+          } catch (e) {}
+          audioCtx = null;
+        }
+        nextPlayTime = 0;
         btn.innerText = '🔇 Speaker: OFF';
         btn.classList.remove('active');
       }

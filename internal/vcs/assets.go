@@ -852,7 +852,36 @@ let nextPlayTime = 0;
 
 async function toggleWebAudio() {
     const btn = document.getElementById('btn-audio-init');
-    if (!audioCtx) {
+
+    if (isAudioActive) {
+        // Complete Disable: Close AudioContext and release hardware
+        isAudioActive = false;
+        if (micStream) {
+            micStream.getTracks().forEach(t => t.stop());
+            micStream = null;
+        }
+        if (audioCtx) {
+            try {
+                await audioCtx.close();
+            } catch (e) {
+                console.warn('Error closing audioCtx:', e);
+            }
+            audioCtx = null;
+            analyser = null;
+        }
+        nextPlayTime = 0;
+
+        // Reset VU meter
+        const vuBar = document.getElementById('vu-bar');
+        if (vuBar) vuBar.style.width = '0%';
+
+        if (btn) {
+            btn.innerHTML = '<span class="icon">&#128263;</span> Audio OFF';
+            btn.classList.remove('active');
+            btn.classList.add('muted');
+        }
+    } else {
+        // Enable: Fresh initialization
         try {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
             analyser = audioCtx.createAnalyser();
@@ -878,40 +907,33 @@ async function toggleWebAudio() {
                     }
                 };
                 micSource.connect(processor);
-                processor.connect(audioCtx.destination);
+
+                // Zero-gain routing: Prevents microphone background noise from leaking to the speaker
+                const muteGain = audioCtx.createGain();
+                muteGain.gain.value = 0;
+                processor.connect(muteGain);
+                muteGain.connect(audioCtx.destination);
             } catch (e) {
                 console.warn('Microphone access denied or unavailable, synthetic tone will be used for PTT:', e);
+            }
+
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            isAudioActive = true;
+            nextPlayTime = audioCtx.currentTime + 0.025;
+
+            if (btn) {
+                btn.innerHTML = '<span class="icon">&#128266;</span> Audio ON';
+                btn.classList.remove('muted');
+                btn.classList.add('active');
             }
 
             startSpectrumRender();
         } catch (err) {
             console.error('Failed to init Web Audio:', err);
-            return;
-        }
-    }
-
-    if (isAudioActive) {
-        // Turn OFF
-        if (audioCtx.state === 'running') {
-            await audioCtx.suspend();
-        }
-        isAudioActive = false;
-        if (btn) {
-            btn.innerHTML = '<span class="icon">&#128263;</span> Audio OFF';
-            btn.classList.remove('active');
-            btn.classList.add('muted');
-        }
-    } else {
-        // Turn ON
-        if (audioCtx.state === 'suspended') {
-            await audioCtx.resume();
-        }
-        isAudioActive = true;
-        nextPlayTime = audioCtx.currentTime + 0.025;
-        if (btn) {
-            btn.innerHTML = '<span class="icon">&#128266;</span> Audio ON';
-            btn.classList.remove('muted');
-            btn.classList.add('active');
+            isAudioActive = false;
         }
     }
 }
@@ -972,6 +994,7 @@ function startSpectrumRender() {
     const dataArray = new Uint8Array(bufferLength);
 
     function render() {
+        if (!isAudioActive || !analyser) return;
         requestAnimationFrame(render);
         analyser.getByteFrequencyData(dataArray);
 
