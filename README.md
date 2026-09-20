@@ -63,42 +63,92 @@ make demo-vcs
 
 ---
 
-## 📡 システム接続構成図 (VCS & GRS)
+## 📡 システム接続構成図
 
-Aerovoice の内部では、VCS と GRS が以下のポートとプロトコル（EUROCAE ED-137C 準拠）で協調動作しています：
+Aerovoice は管制官が操作する **VCS（Voice Communication System）** と、対向の地上無線基地局を模擬する **GRS（Ground Radio Station）** の 2 つの独立したシステムが、EUROCAE ED-137C 規格に準拠したプロトコルでネットワーク連携しています。
+
+### 1. VCS (Voice Communication System) 側システム構成図
+管制官のオペレーション卓として機能するクライアント＆サーバーシステムです。
 
 ```mermaid
 flowchart TB
-    subgraph Browser["ブラウザ（Google Chrome / Edge）"]
-        VCS_UI["管制官画面 (VCS Console)<br/>http://127.0.0.1:8082"]
-        GRS_UI["無線局画面 (GRS Testbench)<br/>http://127.0.0.1:8081"]
+    subgraph Browser["管制官ブラウザ (Web UI)"]
+        VCS_UI["管制卓画面 (:8082)<br/>(HTMX + Tailwind CSS)"]
+        VCS_Audio["ブラウザ Web Audio API<br/>(マイク集音 & VU/FFT表示)"]
     end
 
     subgraph VCS_Host["Aerovoice VCS サーバー (:8082)"]
-        VCS_Core["VCS コア制御<br/>(Channel FSM, Recorder)"]
-        VCS_SIP["SIP エージェント (:5060/udp)"]
-        VCS_RTP["RTP 送受信 (:10000~/udp)<br/>動的ジッタバッファ (10-120ms)"]
-        VCS_FFT["Web Audio リアルタイム FFT<br/>(WebSocket /ws/audio)"]
+        VCS_Web["Web サーバー (:8082)<br/>(/ui/*, /api/*)"]
+        VCS_WS["WebSocket ハブ<br/>(/ws/audio, /ws/events)"]
+        VCS_Core["VCS コア制御<br/>・Channel FSM 状態遷移<br/>・Telephony (DA電話) 制御<br/>・Audio Recorder (WAV 8kHz)"]
+        VCS_SIP["SIP エージェント (:5060/udp)<br/>・呼制御 (INVITE, BYE)<br/>・死活監視 (OPTIONS Ping)"]
+        VCS_RTP["RTP メディアエンジン (:10000~/udp)<br/>・動的ジッタバッファ (10-120ms)<br/>・G.711 PCMA/PCMU エンコード<br/>・ED-137 送話ヘッダー付与"]
+    end
+
+    subgraph GRS_Remote["【対向】GRS 無線基地局"]
+        Remote_SIP["SIP 待受ポート (:5070/udp)"]
+        Remote_RTP["RTP 待受ポート (:20000~/udp)"]
+    end
+
+    VCS_UI <-->|HTTP GET/POST| VCS_Web
+    VCS_Audio <-->|WebSocket 双方向音声| VCS_WS
+    VCS_Web --> VCS_Core
+    VCS_WS <--> VCS_Core
+
+    VCS_Core <--> VCS_SIP
+    VCS_Core <--> VCS_RTP
+
+    VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| Remote_SIP
+    VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| Remote_RTP
+```
+
+### 2. GRS (Ground Radio Station) 側システム構成図
+滑走路脇に設置された無線中継基地局を模擬し、テスト検証・障害注入・受話確認を提供するエミュレータです。
+
+```mermaid
+flowchart TB
+    subgraph Browser_GRS["無線局管理ブラウザ (Web UI)"]
+        GRS_UI["GRS テストベンチ画面 (:8081)<br/>(HTMX + レスポンシブUI)"]
+        GRS_Audio["ブラウザ Web Audio API<br/>(生スピーカー受話 & FFT解析)"]
     end
 
     subgraph GRS_Host["Aerovoice GRS エミュレータ (:8081)"]
-        GRS_Core["GRS コア<br/>(音声生成・エコーバック・障害注入)"]
-        GRS_SIP["SIP エージェント (:5070/udp)"]
-        GRS_RTP["RTP 送受信 (:20000~/udp)"]
-        GRS_Speaker["PC スピーカー音声出力"]
+        GRS_Web["Web サーバー (:8081)<br/>(/api/snapshot, /api/control)"]
+        GRS_WS["WebSocket 音声配信<br/>(/ws/audio)"]
+        GRS_Core["GRS コア制御<br/>・SQU スケルチ制御<br/>・音声ソース切替 (トーン/模擬音声)<br/>・300ms ループバック通話"]
+        GRS_Impair["ネットワーク障害注入器<br/>・ジッタ注入 (0〜100ms)<br/>・パケットロス (0〜50%)<br/>・Silent Drop (無応答障害)"]
+        GRS_SIP["SIP エージェント (:5070/udp)<br/>・自動着呼応答 (200 OK)<br/>・OPTIONS 死活監視応答"]
+        GRS_RTP["RTP メディアエンジン (:20000~/udp)<br/>・ED-137 ヘッダー解析 (PTT, SQU, SQI)<br/>・G.711 デコード / 送出"]
     end
 
-    VCS_UI <-->|HTTP / WebSocket| VCS_Core
-    GRS_UI <-->|HTTP| GRS_Core
+    subgraph VCS_Remote["【対向】VCS 管制卓"]
+        Remote_VCS_SIP["SIP 送受信ポート (:5060/udp)"]
+        Remote_VCS_RTP["RTP 送受信ポート (:10000~/udp)"]
+    end
 
-    VCS_SIP <-->|"① SIP INVITE / 200 OK (SDP ptime:10/20)"| GRS_SIP
-    VCS_SIP <-->|"④ 死活監視 SIP OPTIONS Ping"| GRS_SIP
+    Speaker["PC スピーカー音声出力"]
 
-    VCS_RTP <-->|"② 音声 RTP (G.711 PCMA/PCMU)"| GRS_RTP
-    VCS_RTP <-->|"③ ED-137 ヘッダー拡張 (Profile 0x0167)<br/>[ PTT ON/OFF, SQU, SQI, PTT-ID ]"| GRS_RTP
+    GRS_UI <-->|HTTP GET/POST| GRS_Web
+    GRS_Core -->|リアルタイム音声データ| GRS_WS
+    GRS_WS -->|WebSocket| GRS_Audio
+    GRS_Audio --> Speaker
 
-    GRS_Core --> GRS_Speaker
+    GRS_Web --> GRS_Core
+    GRS_Core <--> GRS_Impair
+    GRS_Impair <--> GRS_SIP
+    GRS_Impair <--> GRS_RTP
+
+    Remote_VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| GRS_SIP
+    Remote_VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
 ```
+
+### 3. システム間プロトコル & ポート対照表
+
+| プロトコル | VCS 側ポート | GRS 側ポート | 規格 / 用途 |
+| :--- | :--- | :--- | :--- |
+| **SIP** | `5060/udp` | `5070/udp` | RFC 3261 / ED-137C Vol 1&2（呼制御 INVITE/200 OK/BYE、死活監視 OPTIONS） |
+| **RTP** | `10000~/udp` | `20000~/udp` | RFC 3550 / ED-137C Vol 1（G.711 A-law/μ-law + Header Extension `0x0167`） |
+| **HTTP/WS** | `8082/tcp` | `8081/tcp` | 管制卓 Web UI / 無線局テストベンチ UI、リアルタイム WebSocket 音声 |
 
 ### 🎮 5分で体験するクイック手順
 
@@ -213,17 +263,6 @@ Makefile に定義されている以下のコマンドを使用して開発を�
 | `make check` | 同梱スキルのマークダウン構文チェック |
 | `make self-eval` | リポジトリ要件の自己評価の実行 (`REQUIREMENTS.md` の更新) |
 | `make clean` | ビルド成果物やテストキャッシュのクリーンアップ |
-
----
-
-## ☁️ さくらのクラウド Terraform CI/CD
-
-本テンプレートには、さくらのクラウド用の Terraform CI/CD ワークフローが含まれています。`terraform/` ディレクトリ配下のファイルに変更があった場合のみトリガーされます。
-
-### 🔑 GitHub Secrets の設定
-以下の GitHub Secrets をリポジトリに登録してください：
-- `SAKURA_ACCESS_TOKEN` / `SAKURA_ACCESS_TOKEN_SECRET`
-- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
 
 ---
 
