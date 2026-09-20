@@ -1,0 +1,18 @@
+grs:
+  sip_host: "127.0.0.1"
+  sip_port: 5070
+  rtp_host: "127.0.0.1"
+  rtp_port: 20000
+  web_host: "0.0.0.0"
+  web_port: 8081
+  station_name: "GRS-TWR-118.100"
+  frequency: "118.100 MHz"
+  default_ptime: 10
+  loopback_echo: false
+  audio_source: "pilot_voice" # pilot_voice | tone_1khz | beep_400hz | telephony_voice | loopback
+  impairment:
+    jitter_ms: 0
+    loss_percent: 0
+  telephone:
+    auto_answer: true
+    auto_answer_mode: "tone_1khz" # tone_1khz | loopback | manual
