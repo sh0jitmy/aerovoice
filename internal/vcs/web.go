@@ -46,13 +46,13 @@ var upgrader = websocket.Upgrader{
 
 // WebServer manages the VCS Web Dashboard and WebSocket connections.
 type WebServer struct {
-	svc          *VCSService
-	recorder     *media.Recorder
-	server       *http.Server
-	wsClients    map[*websocket.Conn]bool
-	wsMu         sync.Mutex
-	lastPCAPWAV  []byte
-	lastPCAPMu   sync.RWMutex
+	svc         *VCSService
+	recorder    *media.Recorder
+	server      *http.Server
+	wsClients   map[*websocket.Conn]bool
+	wsMu        sync.Mutex
+	lastPCAPWAV []byte
+	lastPCAPMu  sync.RWMutex
 }
 
 // NewWebServer initializes and launches the VCS web console server on specified host/port.
@@ -113,8 +113,9 @@ func NewWebServer(svc *VCSService, recorder *media.Recorder, host string, port i
 	}
 
 	ws.server = &http.Server{
-		Addr:    addr,
-		Handler: mux,
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {
@@ -203,7 +204,8 @@ func (w *WebServer) handleHTMX(rw http.ResponseWriter, r *http.Request) {
 		"../../internal/web/static/js/htmx.min.js",
 	}
 	for _, p := range paths {
-		if data, err := os.ReadFile(p); err == nil {
+		//nolint:gosec // G304: static predefined paths
+		if data, err := os.ReadFile(filepath.Clean(p)); err == nil {
 			_, _ = rw.Write(data)
 			return
 		}
@@ -248,6 +250,7 @@ func (w *WebServer) handleWebSocket(rw http.ResponseWriter, r *http.Request) {
 		if msgType == websocket.BinaryMessage && len(data)%2 == 0 {
 			samples := make([]int16, len(data)/2)
 			for i := 0; i < len(samples); i++ {
+				//nolint:gosec // G115: raw PCM sample conversion
 				samples[i] = int16(binary.LittleEndian.Uint16(data[i*2 : i*2+2]))
 			}
 			w.svc.FeedMicAudio(samples)
@@ -503,11 +506,14 @@ func (w *WebServer) handleRadioPTT(rw http.ResponseWriter, r *http.Request) {
 	action := r.URL.Query().Get("action")
 	pttTypeStr := r.URL.Query().Get("type")
 
-	pttType := ed137.PTTNormal
-	if pttTypeStr == "priority" {
+	var pttType ed137.PTTType
+	switch pttTypeStr {
+	case "priority":
 		pttType = ed137.PTTPriority
-	} else if pttTypeStr == "emergency" {
+	case "emergency":
 		pttType = ed137.PTTEmergency
+	default:
+		pttType = ed137.PTTNormal
 	}
 
 	if action == "start" {
@@ -586,6 +592,7 @@ func (w *WebServer) handleRecordingAudio(rw http.ResponseWriter, r *http.Request
 	filePath := r.URL.Query().Get("file")
 	cleanPath := filepath.Clean(filePath)
 
+	//nolint:gosec // G304: user-requested audio recording file
 	data, err := os.ReadFile(cleanPath)
 	if err != nil {
 		http.Error(rw, "file not found", http.StatusNotFound)
@@ -593,11 +600,15 @@ func (w *WebServer) handleRecordingAudio(rw http.ResponseWriter, r *http.Request
 	}
 
 	rw.Header().Set("Content-Type", "audio/wav")
+	rw.Header().Set("X-Content-Type-Options", "nosniff")
 	rw.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	//nolint:gosec // G705: raw binary WAV data
 	_, _ = rw.Write(data)
 }
 
 func (w *WebServer) handlePCAPUpload(rw http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(rw, r.Body, 32<<20)
+	//nolint:gosec // G120: request body bounded by http.MaxBytesReader
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
@@ -608,7 +619,7 @@ func (w *WebServer) handlePCAPUpload(rw http.ResponseWriter, r *http.Request) {
 		http.Error(rw, "missing pcap file", http.StatusBadRequest)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	report, err := pcap.AnalyzePCAP(file, header.Filename)
 	if err != nil {
@@ -689,4 +700,3 @@ func (w *WebServer) handleUILogsTerminal(rw http.ResponseWriter, r *http.Request
 	}
 	_ = tmpl.Execute(rw, logs)
 }
-

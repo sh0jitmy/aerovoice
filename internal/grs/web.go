@@ -39,11 +39,10 @@ var upgrader = websocket.Upgrader{
 
 // WebServer provides the GRS emulator testbench console UI.
 type WebServer struct {
-	svc        *Service
-	server     *http.Server
-	wsClients  map[*websocket.Conn]bool
-	wsMu       sync.Mutex
-	tmpl       *template.Template
+	svc       *Service
+	server    *http.Server
+	wsClients map[*websocket.Conn]bool
+	wsMu      sync.Mutex
 }
 
 // NewWebServer initializes the GRS testbench Web console.
@@ -65,8 +64,9 @@ func NewWebServer(svc *Service, host string, port int) (*WebServer, error) {
 	mux.HandleFunc("/ws/audio", ws.handleWSAudio)
 
 	ws.server = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", host, port),
-		Handler: mux,
+		Addr:              fmt.Sprintf("%s:%d", host, port),
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	// Start audio broadcast worker to WebSockets

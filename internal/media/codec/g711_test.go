@@ -24,6 +24,7 @@ import (
 )
 
 func TestG711ALaw_RoundTrip(t *testing.T) {
+	t.Parallel()
 	// Generate 1kHz sine wave samples (8kHz sample rate)
 	samples := make([]int16, 160)
 	for i := range samples {
@@ -47,6 +48,7 @@ func TestG711ALaw_RoundTrip(t *testing.T) {
 }
 
 func TestG711ULaw_RoundTrip(t *testing.T) {
+	t.Parallel()
 	samples := make([]int16, 160)
 	for i := range samples {
 		sinVal := math.Sin(2 * math.Pi * 1000 * float64(i) / 8000.0)
@@ -68,6 +70,7 @@ func TestG711ULaw_RoundTrip(t *testing.T) {
 }
 
 func TestPCMBytesConversion(t *testing.T) {
+	t.Parallel()
 	original := []int16{0, 100, -100, 32767, -32768}
 	pcmBytes := Int16ToPCMBytes(original)
 	assert.Len(t, pcmBytes, 10)

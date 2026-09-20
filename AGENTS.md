@@ -17,16 +17,19 @@ This document provides behavioral constraints, architectural conventions, and ex
 
 1. **Custom Skills First**:
    - Relevant skills are located in `.agents/skills/` and `.claude/skills/`.
-   - Adhere to `golang-htmx-frontend`, `golang-sqlite-governance`, `multi-tier-e2e-testing`, and `observability-stack` for architecture and implementation decisions.
-2. **License Header Integrity**:
+   - Adhere to `golang-lint-governance`, `golang-htmx-frontend`, `golang-sqlite-governance`, `multi-tier-e2e-testing`, and `observability-stack` for architecture, code quality, and implementation decisions.
+2. **Zero-Lint Tolerance**:
+   - Every code modification, new file, or refactoring must pass `make lint` with **zero issues** before task conclusion.
+   - Strictly apply the error handling, concurrency, and security rules defined in `golang-lint-governance` (`defer func() { _ = x.Close() }()`, `copylocks` avoidance via snapshots, `G112` Slowloris timeout, `G301`/`G306` file permissions, `paralleltest`, etc.).
+3. **License Header Integrity**:
    - Every Go source file must contain the standard Apache-2.0 and Author header.
    - Always verify with `make license-check` before concluding tasks.
-3. **SSOT Principle**:
+4. **SSOT Principle**:
    - Never hardcode Go versions in GitHub Actions workflows; always use `go-version-file: 'go.mod'`.
    - Version injection must go through `internal/version.Version`.
-4. **Test Isolation**:
+5. **Test Isolation**:
    - In Go unit/integration tests (`internal/...`), isolate SQLite memory databases using distinct connection names (`fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())`) to ensure parallel safety.
-5. **Requirements Compliance**:
+6. **Requirements Compliance**:
    - After updating features or configurations, execute `make self-eval` and ensure 100% compliance in `REQUIREMENTS.md`.
 
 ---

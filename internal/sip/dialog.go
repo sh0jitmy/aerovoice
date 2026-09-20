@@ -47,12 +47,12 @@ func (c *ActiveCall) Hangup(ctx context.Context) error {
 
 // SIPNodeConfig holds configuration for a local SIP endpoint.
 type SIPNodeConfig struct {
-	Host             string
-	Port             int
-	UserAgentName    string
-	OnInvite         func(caller string, callID string, sdpOffer []byte) ([]byte, error)
-	OnBye            func(callID string)
-	OnOptions        func(caller string) bool // true to respond 200 OK, false for silent drop
+	Host          string
+	Port          int
+	UserAgentName string
+	OnInvite      func(caller string, callID string, sdpOffer []byte) ([]byte, error)
+	OnBye         func(callID string)
+	OnOptions     func(caller string) bool // true to respond 200 OK, false for silent drop
 }
 
 // SIPNode encapsulates SIP UAS server and UAC client.

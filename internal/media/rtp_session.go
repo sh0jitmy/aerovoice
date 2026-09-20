@@ -97,7 +97,7 @@ func NewRTPSession(cfg RTPSessionConfig) (*RTPSession, error) {
 	if cfg.RemoteHost != "" && cfg.RemotePort > 0 {
 		remoteAddr, err = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", cfg.RemoteHost, cfg.RemotePort))
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, fmt.Errorf("invalid remote address: %w", err)
 		}
 	}
@@ -125,7 +125,7 @@ func NewRTPSession(cfg RTPSessionConfig) (*RTPSession, error) {
 		handler:      cfg.Handler,
 		payloadType:  cfg.PayloadType,
 		ptime:        cfg.Ptime,
-		ssrc:         uint32(ssrcVal.Uint64()),
+		ssrc:         uint32(ssrcVal.Uint64() & 0xFFFFFFFF), //nolint:gosec // G115: 32-bit random SSRC
 		currentSQI:   100,
 		ctx:          ctx,
 		cancel:       cancel,
@@ -217,7 +217,7 @@ func (s *RTPSession) UpdateTxSignaling(pttType ed137.PTTType, pttID uint8, squel
 }
 
 // Stats returns a snapshot of stream metrics.
-func (s *RTPSession) Stats() StreamStats {
+func (s *RTPSession) Stats() StreamStatsSnapshot {
 	return s.stats.Snapshot()
 }
 
@@ -395,9 +395,10 @@ func (s *RTPSession) rxLoop() {
 
 			// Decode audio payload to 16-bit linear PCM
 			var pcmSamples []int16
-			if packet.PayloadType == codec.PayloadTypePCMA {
+			switch packet.PayloadType {
+			case codec.PayloadTypePCMA:
 				pcmSamples = codec.DecodeALaw(packet.Payload)
-			} else if packet.PayloadType == codec.PayloadTypePCMU {
+			case codec.PayloadTypePCMU:
 				pcmSamples = codec.DecodeULaw(packet.Payload)
 			}
 

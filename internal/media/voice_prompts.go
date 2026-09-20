@@ -63,6 +63,7 @@ func extractPCMFromWAV(wavData []byte) []int16 {
 	nSamples := len(pcmBytes) / 2
 	samples := make([]int16, nSamples)
 	for i := 0; i < nSamples; i++ {
+		//nolint:gosec // G115: raw PCM sample conversion
 		samples[i] = int16(binary.LittleEndian.Uint16(pcmBytes[i*2 : i*2+2]))
 	}
 	return samples

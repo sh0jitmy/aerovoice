@@ -43,7 +43,7 @@ func getFreePort(t *testing.T) int {
 	t.Helper()
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	return ln.Addr().(*net.TCPAddr).Port
 }
 
@@ -52,13 +52,14 @@ func httpGet(t *testing.T, urlStr string) (int, string) {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Get(urlStr)
 	require.NoError(t, err, "HTTP GET failed for %s", urlStr)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	return resp.StatusCode, string(body)
 }
 
+//nolint:paralleltest // Sequential E2E lifecycle test scenarios against shared server
 func TestVCS_HTMX_Frontend_E2E(t *testing.T) {
 	tempDir := t.TempDir()
 	recDir := filepath.Join(tempDir, "recordings")
@@ -98,11 +99,11 @@ func TestVCS_HTMX_Frontend_E2E(t *testing.T) {
 
 	grsSvc, err := grs.NewService(grsCfg)
 	require.NoError(t, err)
-	defer grsSvc.Close()
+	defer func() { _ = grsSvc.Close() }()
 
 	grsWeb, err := grs.NewWebServer(grsSvc, grsCfg.GRS.WebHost, grsCfg.GRS.WebPort)
 	require.NoError(t, err)
-	defer grsWeb.Close()
+	defer func() { _ = grsWeb.Close() }()
 	require.NoError(t, grsWeb.Start())
 
 	// 2. Initialize VCS Service & WebServer
@@ -141,11 +142,11 @@ func TestVCS_HTMX_Frontend_E2E(t *testing.T) {
 
 	vcsSvc, err := vcs.NewVCSService(vcsCfg, recorder)
 	require.NoError(t, err)
-	defer vcsSvc.Close()
+	defer func() { _ = vcsSvc.Close() }()
 
 	vcsWeb, err := vcs.NewWebServer(vcsSvc, recorder, vcsCfg.VCS.WebHost, vcsCfg.VCS.WebPort)
 	require.NoError(t, err)
-	defer vcsWeb.Close()
+	defer func() { _ = vcsWeb.Close() }()
 
 	baseURL := fmt.Sprintf("http://127.0.0.1:%d", vcsWebPort)
 	time.Sleep(100 * time.Millisecond)
@@ -358,9 +359,10 @@ func TestVCS_HTMX_Frontend_E2E(t *testing.T) {
 
 		// Test Audio Stream Endpoint
 		audioAPIURL := fmt.Sprintf("%s/api/recordings/audio?file=%s", baseURL, url.QueryEscape(decodedFile))
+		//nolint:gosec // G107: test endpoint URL
 		resp, err := http.Get(audioAPIURL)
 		require.NoError(t, err)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		assert.Equal(t, "audio/wav", resp.Header.Get("Content-Type"))

@@ -248,11 +248,12 @@ func AnalyzePCAP(reader io.Reader, fileName string) (*AnalysisReport, error) {
 			}
 
 			// Audio decode
-			if rtpPkt.PayloadType == codec.PayloadTypePCMA {
+			switch rtpPkt.PayloadType {
+			case codec.PayloadTypePCMA:
 				report.CodecName = "PCMA (G.711 A-law)"
 				samples := codec.DecodeALaw(rtpPkt.Payload)
 				pcmSamples = append(pcmSamples, samples...)
-			} else if rtpPkt.PayloadType == codec.PayloadTypePCMU {
+			case codec.PayloadTypePCMU:
 				report.CodecName = "PCMU (G.711 μ-law)"
 				samples := codec.DecodeULaw(rtpPkt.Payload)
 				pcmSamples = append(pcmSamples, samples...)
@@ -293,6 +294,7 @@ func AnalyzePCAP(reader io.Reader, fileName string) (*AnalysisReport, error) {
 	}
 	report.MaxJitterMs = math.Round(report.MaxJitterMs*100) / 100
 
+	//nolint:gosec // G115: non-negative packet count
 	totalReceived := uint64(report.RTPPackets)
 	if totalReceived+report.PacketsLost > 0 {
 		report.LossRatePct = math.Round(float64(report.PacketsLost)/float64(totalReceived+report.PacketsLost)*1000) / 10

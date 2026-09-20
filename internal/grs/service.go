@@ -254,23 +254,23 @@ func (s *Service) EndPhoneCall() error {
 
 // StateSnapshot captures real-time status for the Web UI.
 type StateSnapshot struct {
-	StationName      string             `json:"station_name"`
-	Frequency        string             `json:"frequency"`
-	SessionConnected bool               `json:"session_connected"`
-	ClientAddr       string             `json:"client_addr"`
-	RxPTTActive      bool               `json:"rx_ptt_active"`
-	RxPTTType        string             `json:"rx_ptt_type"`
-	RxPTTID          uint8              `json:"rx_ptt_id"`
-	RxSQUActive      bool               `json:"rx_squ_active"`
-	RxLevelDB        float64            `json:"rx_level_db"`
-	TxSQUActive      bool               `json:"tx_squ_active"`
-	AudioSource      string             `json:"audio_source"`
-	Ptime            int                `json:"ptime"`
-	InjJitterMs      int                `json:"inj_jitter_ms"`
-	InjLossPct       int                `json:"inj_loss_pct"`
-	SilentDrop       bool               `json:"silent_drop"`
-	Stats            media.StreamStats  `json:"stats"`
-	RecentLogs       []LogEntry         `json:"recent_logs"`
+	StationName      string                    `json:"station_name"`
+	Frequency        string                    `json:"frequency"`
+	SessionConnected bool                      `json:"session_connected"`
+	ClientAddr       string                    `json:"client_addr"`
+	RxPTTActive      bool                      `json:"rx_ptt_active"`
+	RxPTTType        string                    `json:"rx_ptt_type"`
+	RxPTTID          uint8                     `json:"rx_ptt_id"`
+	RxSQUActive      bool                      `json:"rx_squ_active"`
+	RxLevelDB        float64                   `json:"rx_level_db"`
+	TxSQUActive      bool                      `json:"tx_squ_active"`
+	AudioSource      string                    `json:"audio_source"`
+	Ptime            int                       `json:"ptime"`
+	InjJitterMs      int                       `json:"inj_jitter_ms"`
+	InjLossPct       int                       `json:"inj_loss_pct"`
+	SilentDrop       bool                      `json:"silent_drop"`
+	Stats            media.StreamStatsSnapshot `json:"stats"`
+	RecentLogs       []LogEntry                `json:"recent_logs"`
 }
 
 // GetSnapshot returns current state.
@@ -469,4 +469,3 @@ func (s *Service) ClearLogs() {
 	s.logMu.Unlock()
 	s.logEvent("SYS", "INT", "INFO", "GRS event logs cleared by user")
 }
-

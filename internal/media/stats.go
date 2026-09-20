@@ -28,16 +28,16 @@ type StreamStats struct {
 	mu sync.RWMutex
 
 	// Rx metrics
-	PacketsReceived uint64    `json:"packets_received"`
-	BytesReceived   uint64    `json:"bytes_received"`
-	PacketsLost     uint64    `json:"packets_lost"`
-	LossRate        float64   `json:"loss_rate"`
-	RxJitterMs      float64   `json:"rx_jitter_ms"`
-	PeakRxJitterMs  float64   `json:"peak_rx_jitter_ms"`
-	DetectedPtime   int       `json:"detected_ptime"` // 10 or 20 ms
-	LastRxSeq       uint16    `json:"last_rx_seq"`
-	LastTransit     float64   `json:"-"`
-	HasPreviousRx   bool      `json:"-"`
+	PacketsReceived uint64  `json:"packets_received"`
+	BytesReceived   uint64  `json:"bytes_received"`
+	PacketsLost     uint64  `json:"packets_lost"`
+	LossRate        float64 `json:"loss_rate"`
+	RxJitterMs      float64 `json:"rx_jitter_ms"`
+	PeakRxJitterMs  float64 `json:"peak_rx_jitter_ms"`
+	DetectedPtime   int     `json:"detected_ptime"` // 10 or 20 ms
+	LastRxSeq       uint16  `json:"last_rx_seq"`
+	LastTransit     float64 `json:"-"`
+	HasPreviousRx   bool    `json:"-"`
 
 	// Tx metrics
 	PacketsSent    uint64  `json:"packets_sent"`
@@ -70,7 +70,9 @@ func (s *StreamStats) RecordRxPacket(seq uint16, rtpTimestamp uint32, payloadLen
 	defer s.mu.Unlock()
 
 	s.PacketsReceived++
-	s.BytesReceived += uint64(payloadLen)
+	if payloadLen > 0 {
+		s.BytesReceived += uint64(payloadLen)
+	}
 
 	// Detect ptime from payload length: 80 bytes -> 10ms, 160 bytes -> 20ms
 	if payloadLen <= 100 {
@@ -134,13 +136,32 @@ func (s *StreamStats) RecordTxPacket(payloadLen int, expectedTime, actualTime ti
 	defer s.mu.Unlock()
 
 	s.PacketsSent++
-	s.BytesSent += uint64(payloadLen)
+	if payloadLen > 0 {
+		s.BytesSent += uint64(payloadLen)
+	}
 
 	varianceMs := math.Abs(float64(actualTime.Sub(expectedTime).Nanoseconds())) / 1e6
 	s.TxVarianceMs = s.TxVarianceMs + (varianceMs-s.TxVarianceMs)/16.0
 	if s.TxVarianceMs > s.PeakTxVariance {
 		s.PeakTxVariance = s.TxVarianceMs
 	}
+}
+
+// StreamStatsSnapshot represents an immutable value snapshot of RTP stream metrics.
+type StreamStatsSnapshot struct {
+	PacketsReceived uint64  `json:"packets_received"`
+	BytesReceived   uint64  `json:"bytes_received"`
+	PacketsLost     uint64  `json:"packets_lost"`
+	LossRate        float64 `json:"loss_rate"`
+	RxJitterMs      float64 `json:"rx_jitter_ms"`
+	PeakRxJitterMs  float64 `json:"peak_rx_jitter_ms"`
+	DetectedPtime   int     `json:"detected_ptime"`
+	LastRxSeq       uint16  `json:"last_rx_seq"`
+	PacketsSent     uint64  `json:"packets_sent"`
+	BytesSent       uint64  `json:"bytes_sent"`
+	TxVarianceMs    float64 `json:"tx_variance_ms"`
+	PeakTxVariance  float64 `json:"peak_tx_variance_ms"`
+	SQI             uint8   `json:"sqi"`
 }
 
 // SetSQI updates Signal Quality Index (0..100).
@@ -150,11 +171,25 @@ func (s *StreamStats) SetSQI(sqi uint8) {
 	s.SQI = sqi
 }
 
-// Snapshot returns a copy of current stats.
-func (s *StreamStats) Snapshot() StreamStats {
+// Snapshot returns an immutable copy of current stats.
+func (s *StreamStats) Snapshot() StreamStatsSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return *s
+	return StreamStatsSnapshot{
+		PacketsReceived: s.PacketsReceived,
+		BytesReceived:   s.BytesReceived,
+		PacketsLost:     s.PacketsLost,
+		LossRate:        s.LossRate,
+		RxJitterMs:      s.RxJitterMs,
+		PeakRxJitterMs:  s.PeakRxJitterMs,
+		DetectedPtime:   s.DetectedPtime,
+		LastRxSeq:       s.LastRxSeq,
+		PacketsSent:     s.PacketsSent,
+		BytesSent:       s.BytesSent,
+		TxVarianceMs:    s.TxVarianceMs,
+		PeakTxVariance:  s.PeakTxVariance,
+		SQI:             s.SQI,
+	}
 }
 
 // LogSummary emits a structured log summary.

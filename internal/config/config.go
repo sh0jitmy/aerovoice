@@ -36,14 +36,14 @@ type VCSConfig struct {
 
 // VCSCoreConfig represents network and general VCS parameters.
 type VCSCoreConfig struct {
-	SIPHost              string `yaml:"sip_host"`
-	SIPPort              int    `yaml:"sip_port"`
-	RTPHost              string `yaml:"rtp_host"`
-	RTPPortStart         int    `yaml:"rtp_port_start"`
-	WebHost              string `yaml:"web_host"`
-	WebPort              int    `yaml:"web_port"`
-	DefaultPtime         int    `yaml:"default_ptime"`
-	DefaultJitterBufferMs int   `yaml:"default_jitter_buffer_ms"`
+	SIPHost               string `yaml:"sip_host"`
+	SIPPort               int    `yaml:"sip_port"`
+	RTPHost               string `yaml:"rtp_host"`
+	RTPPortStart          int    `yaml:"rtp_port_start"`
+	WebHost               string `yaml:"web_host"`
+	WebPort               int    `yaml:"web_port"`
+	DefaultPtime          int    `yaml:"default_ptime"`
+	DefaultJitterBufferMs int    `yaml:"default_jitter_buffer_ms"`
 }
 
 // ChannelConfig represents a radio channel configuration.
@@ -76,19 +76,19 @@ type GRSConfig struct {
 
 // GRSStationConfig represents settings for a GRS emulator instance.
 type GRSStationConfig struct {
-	SIPHost       string                `yaml:"sip_host"`
-	SIPPort       int                   `yaml:"sip_port"`
-	RTPHost       string                `yaml:"rtp_host"`
-	RTPPort       int                   `yaml:"rtp_port"`
-	WebHost       string                `yaml:"web_host"`
-	WebPort       int                   `yaml:"web_port"`
-	StationName   string                `yaml:"station_name"`
-	Frequency     string                `yaml:"frequency"`
-	DefaultPtime  int                   `yaml:"default_ptime"`
-	LoopbackEcho  bool                  `yaml:"loopback_echo"`
-	AudioSource   string                `yaml:"audio_source"`
-	Impairment    GRSImpairmentConfig   `yaml:"impairment"`
-	Telephone     GRSTelephoneConfig    `yaml:"telephone"`
+	SIPHost      string              `yaml:"sip_host"`
+	SIPPort      int                 `yaml:"sip_port"`
+	RTPHost      string              `yaml:"rtp_host"`
+	RTPPort      int                 `yaml:"rtp_port"`
+	WebHost      string              `yaml:"web_host"`
+	WebPort      int                 `yaml:"web_port"`
+	StationName  string              `yaml:"station_name"`
+	Frequency    string              `yaml:"frequency"`
+	DefaultPtime int                 `yaml:"default_ptime"`
+	LoopbackEcho bool                `yaml:"loopback_echo"`
+	AudioSource  string              `yaml:"audio_source"`
+	Impairment   GRSImpairmentConfig `yaml:"impairment"`
+	Telephone    GRSTelephoneConfig  `yaml:"telephone"`
 }
 
 // GRSImpairmentConfig holds simulated network impairment values.
@@ -200,4 +200,3 @@ func (c *VCSConfig) GetTelephony() TelephonyConfig {
 	defer c.mu.RUnlock()
 	return c.Telephony
 }
-

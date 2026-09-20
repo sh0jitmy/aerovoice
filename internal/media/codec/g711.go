@@ -77,6 +77,7 @@ func PCMBytesToInt16(pcmBytes []byte) []int16 {
 	n := len(pcmBytes) / 2
 	samples := make([]int16, n)
 	for i := 0; i < n; i++ {
+		//nolint:gosec // G115: raw PCM conversion
 		samples[i] = int16(binary.LittleEndian.Uint16(pcmBytes[i*2 : i*2+2]))
 	}
 	return samples
@@ -86,6 +87,7 @@ func PCMBytesToInt16(pcmBytes []byte) []int16 {
 func Int16ToPCMBytes(samples []int16) []byte {
 	out := make([]byte, len(samples)*2)
 	for i, s := range samples {
+		//nolint:gosec // G115: raw PCM conversion
 		binary.LittleEndian.PutUint16(out[i*2:i*2+2], uint16(s))
 	}
 	return out
@@ -143,6 +145,7 @@ func encodeALawSample(pcm int16) uint8 {
 		quant = 15
 	}
 
+	//nolint:gosec // G115: A-law byte packaging
 	alaw := sign | uint8(seg<<4) | uint8(quant)
 	return alaw ^ 0x55
 }
@@ -186,6 +189,7 @@ func encodeULawSample(pcmVal int16) uint8 {
 		seg--
 	}
 
+	//nolint:gosec // G115: μ-law byte packaging
 	uval := uint8(int(sign) | (seg << 4) | int((pcmVal>>(seg+3))&0x0F))
 	return ^uval
 }
@@ -202,7 +206,9 @@ func decodeULawSample(ulaw uint8) int16 {
 	val -= bias
 
 	if sign != 0 {
+		//nolint:gosec // G115: decoded linear PCM sample
 		return int16(-val)
 	}
+	//nolint:gosec // G115: decoded linear PCM sample
 	return int16(val)
 }

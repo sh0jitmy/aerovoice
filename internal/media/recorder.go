@@ -30,14 +30,14 @@ import (
 
 // RecordingMetadata stores information about an audio recording.
 type RecordingMetadata struct {
-	ID        string    `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Type      string    `json:"type"` // "Radio PTT (TX)", "Radio SQU (RX)", "Phone Call"
-	Channel   string    `json:"channel"`
-	DurationS float64   `json:"duration_s"`
-	DurationStr string  `json:"duration_str"`
-	FilePath  string    `json:"file_path"`
-	SizeBytes int64     `json:"size_bytes"`
+	ID          string    `json:"id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Type        string    `json:"type"` // "Radio PTT (TX)", "Radio SQU (RX)", "Phone Call"
+	Channel     string    `json:"channel"`
+	DurationS   float64   `json:"duration_s"`
+	DurationStr string    `json:"duration_str"`
+	FilePath    string    `json:"file_path"`
+	SizeBytes   int64     `json:"size_bytes"`
 }
 
 // Recorder manages local WAV audio file recording and cataloging.
@@ -59,7 +59,7 @@ type activeSession struct {
 // NewRecorder initializes the recording storage in outputDir and scans existing WAV logs.
 func NewRecorder(outputDir string) (*Recorder, error) {
 	cleanDir := filepath.Clean(outputDir)
-	if err := os.MkdirAll(cleanDir, 0o755); err != nil {
+	if err := os.MkdirAll(cleanDir, 0o750); err != nil {
 		return nil, fmt.Errorf("failed to create recordings directory %s: %w", cleanDir, err)
 	}
 
@@ -186,7 +186,7 @@ func (r *Recorder) StopRecording(sessionID string) (*RecordingMetadata, error) {
 	filePath := filepath.Join(r.outputDir, fileName)
 
 	wavBytes := EncodeWAV(sess.samples, 8000)
-	if err := os.WriteFile(filePath, wavBytes, 0o644); err != nil {
+	if err := os.WriteFile(filePath, wavBytes, 0o600); err != nil {
 		return nil, fmt.Errorf("failed to write WAV file %s: %w", filePath, err)
 	}
 
@@ -243,6 +243,7 @@ func EncodeWAV(samples []int16, sampleRate int) []byte {
 
 	// RIFF Chunk
 	buf.WriteString("RIFF")
+	//nolint:gosec // G115: standard WAV header field
 	_ = binary.Write(buf, binary.LittleEndian, uint32(chunkSize))
 	buf.WriteString("WAVE")
 
@@ -251,13 +252,16 @@ func EncodeWAV(samples []int16, sampleRate int) []byte {
 	_ = binary.Write(buf, binary.LittleEndian, uint32(16))          // Subchunk1Size (16 for PCM)
 	_ = binary.Write(buf, binary.LittleEndian, uint16(1))           // AudioFormat (1 for PCM)
 	_ = binary.Write(buf, binary.LittleEndian, uint16(numChannels)) // NumChannels
-	_ = binary.Write(buf, binary.LittleEndian, uint32(sampleRate))  // SampleRate
-	_ = binary.Write(buf, binary.LittleEndian, uint32(byteRate))    // ByteRate
-	_ = binary.Write(buf, binary.LittleEndian, uint16(blockAlign))  // BlockAlign
+	//nolint:gosec // G115: standard WAV header fields
+	_ = binary.Write(buf, binary.LittleEndian, uint32(sampleRate)) // SampleRate
+	//nolint:gosec // G115: standard WAV header fields
+	_ = binary.Write(buf, binary.LittleEndian, uint32(byteRate))   // ByteRate
+	_ = binary.Write(buf, binary.LittleEndian, uint16(blockAlign)) // BlockAlign
 	_ = binary.Write(buf, binary.LittleEndian, uint16(bitsPerSample))
 
 	// data Sub-chunk
 	buf.WriteString("data")
+	//nolint:gosec // G115: standard WAV header field
 	_ = binary.Write(buf, binary.LittleEndian, uint32(dataSize))
 	for _, s := range samples {
 		_ = binary.Write(buf, binary.LittleEndian, s)

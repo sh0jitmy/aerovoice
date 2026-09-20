@@ -60,6 +60,7 @@ func createSyntheticEthernetUDPPacket(srcPort, dstPort uint16, payload []byte) [
 }
 
 func TestAnalyzePCAP(t *testing.T) {
+	t.Parallel()
 	// Create an in-memory PCAP with 1 SIP INVITE and 5 RTP packets with ED-137 extension
 	pcapBuf := new(bytes.Buffer)
 	writer := pcapgo.NewWriter(pcapBuf)
@@ -104,8 +105,8 @@ func TestAnalyzePCAP(t *testing.T) {
 			Payload: alawPayload,
 		}
 		_ = rtpPkt.SetExtension(0, ext.EncodePayload())
-		rtpRaw, err := rtpPkt.Marshal()
-		require.NoError(t, err)
+		rtpRaw, mErr := rtpPkt.Marshal()
+		require.NoError(t, mErr)
 
 		ethPkt := createSyntheticEthernetUDPPacket(10000, 20000, rtpRaw)
 		pktTime := baseTime.Add(time.Duration(i*10) * time.Millisecond)

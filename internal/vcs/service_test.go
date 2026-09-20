@@ -31,6 +31,7 @@ import (
 )
 
 func TestVCSService_InitAndSnapshots(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	recDir := filepath.Join(tempDir, "recordings")
 
@@ -70,7 +71,7 @@ func TestVCSService_InitAndSnapshots(t *testing.T) {
 
 	svc, err := NewVCSService(cfg, recorder)
 	require.NoError(t, err)
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 
 	// Verify channel snapshots
 	snaps := svc.GetChannelSnapshots()
@@ -93,6 +94,7 @@ func TestVCSService_InitAndSnapshots(t *testing.T) {
 }
 
 func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	recDir := filepath.Join(tempDir, "recordings")
 
@@ -122,7 +124,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 
 	grsSvc, err := grs.NewService(grsCfg)
 	require.NoError(t, err)
-	defer grsSvc.Close()
+	defer func() { _ = grsSvc.Close() }()
 
 	vcsCfg := &config.VCSConfig{
 		VCS: config.VCSCoreConfig{
@@ -157,7 +159,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 
 	vcsSvc, err := NewVCSService(vcsCfg, recorder)
 	require.NoError(t, err)
-	defer vcsSvc.Close()
+	defer func() { _ = vcsSvc.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

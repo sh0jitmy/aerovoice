@@ -122,7 +122,8 @@ func ParseRadioSDP(sdpBytes []byte) (*SDPMediaInfo, error) {
 			info.Port = media.MediaName.Port.Value
 
 			if len(media.MediaName.Formats) > 0 {
-				if pt, err := strconv.Atoi(media.MediaName.Formats[0]); err == nil {
+				if pt, err := strconv.Atoi(media.MediaName.Formats[0]); err == nil && pt >= 0 && pt <= 127 {
+					//nolint:gosec // G115: standard RTP payload type (0-127)
 					info.PayloadType = uint8(pt)
 					if info.PayloadType == codec.PayloadTypePCMU {
 						info.CodecName = "PCMU"

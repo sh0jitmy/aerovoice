@@ -24,10 +24,11 @@ import (
 )
 
 func TestRadioHeaderExtension_RoundTrip(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
-		name    string
-		ext     RadioHeaderExtension
-		rawHex  []byte
+		name   string
+		ext    RadioHeaderExtension
+		rawHex []byte
 	}{
 		{
 			name: "PTT Normal, SQU OFF, ID 1, SQI 95",
@@ -80,7 +81,9 @@ func TestRadioHeaderExtension_RoundTrip(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			// Test EncodePayload
 			payload := tt.ext.EncodePayload()
 			assert.Equal(t, tt.rawHex, payload)
@@ -106,20 +109,22 @@ func TestRadioHeaderExtension_RoundTrip(t *testing.T) {
 }
 
 func TestRadioHeaderExtension_Errors(t *testing.T) {
+	t.Parallel()
 	// Too short payload
 	_, err := DecodePayload([]byte{0x21, 0x5F, 0x00})
-	assert.ErrorIs(t, err, ErrPayloadTooShort)
+	require.ErrorIs(t, err, ErrPayloadTooShort)
 
 	// Too short full extension
 	_, err = DecodeFullExtension([]byte{0x01, 0x67, 0x00})
-	assert.ErrorIs(t, err, ErrPayloadTooShort)
+	require.ErrorIs(t, err, ErrPayloadTooShort)
 
 	// Invalid profile
 	_, err = DecodeFullExtension([]byte{0xBE, 0xDE, 0x00, 0x01, 0x21, 0x5F, 0x00, 0x00})
-	assert.ErrorIs(t, err, ErrInvalidProfile)
+	require.ErrorIs(t, err, ErrInvalidProfile)
 }
 
 func TestPTTType_String(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "OFF", PTTOff.String())
 	assert.Equal(t, "Normal", PTTNormal.String())
 	assert.Equal(t, "Priority", PTTPriority.String())

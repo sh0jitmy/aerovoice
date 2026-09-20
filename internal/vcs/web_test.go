@@ -29,6 +29,7 @@ import (
 )
 
 func TestWebServer_Endpoints(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	recDir := filepath.Join(tempDir, "recordings")
 
@@ -59,11 +60,11 @@ func TestWebServer_Endpoints(t *testing.T) {
 
 	svc, err := NewVCSService(cfg, recorder)
 	require.NoError(t, err)
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 
 	webSvr, err := NewWebServer(svc, recorder, "127.0.0.1", 18080)
 	require.NoError(t, err)
-	defer webSvr.Close()
+	defer func() { _ = webSvr.Close() }()
 
 	// 1. Test Index HTML
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

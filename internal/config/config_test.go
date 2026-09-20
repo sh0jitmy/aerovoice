@@ -26,6 +26,7 @@ import (
 )
 
 func TestLoadVCSConfig(t *testing.T) {
+	t.Parallel()
 	yamlData := `
 vcs:
   sip_port: 5060
@@ -70,6 +71,7 @@ channels:
 }
 
 func TestLoadGRSConfig(t *testing.T) {
+	t.Parallel()
 	yamlData := `
 grs:
   sip_port: 5070

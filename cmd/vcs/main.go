@@ -68,7 +68,7 @@ func main() {
 		slog.Error("Failed to initialize VCS service", "error", err)
 		os.Exit(1)
 	}
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 
 	webCore := cfg.GetVCS()
 	webSvr, err := vcs.NewWebServer(svc, recorder, webCore.WebHost, webCore.WebPort)
@@ -76,7 +76,7 @@ func main() {
 		slog.Error("Failed to start VCS Web Console", "error", err)
 		os.Exit(1)
 	}
-	defer webSvr.Close()
+	defer func() { _ = webSvr.Close() }()
 
 	slog.Info("VCS System fully operational",
 		"web_url", fmt.Sprintf("http://%s:%d", webCore.WebHost, webCore.WebPort),

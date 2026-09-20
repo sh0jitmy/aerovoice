@@ -27,6 +27,7 @@ import (
 )
 
 func TestChannelFSM_Transitions(t *testing.T) {
+	t.Parallel()
 	fsm := NewChannelFSM("ch-twr")
 	assert.Equal(t, StateDisconnected, fsm.State())
 

@@ -30,6 +30,7 @@ import (
 )
 
 func TestGRSService_InitAndControls(t *testing.T) {
+	t.Parallel()
 	cfg := &config.GRSConfig{
 		GRS: config.GRSStationConfig{
 			SIPHost:      "127.0.0.1",
@@ -50,7 +51,7 @@ func TestGRSService_InitAndControls(t *testing.T) {
 
 	svc, err := NewService(cfg)
 	require.NoError(t, err)
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 
 	// Verify Snapshot
 	snap := svc.GetSnapshot()
@@ -82,7 +83,7 @@ func TestGRSService_InitAndControls(t *testing.T) {
 	// Verify Web Server Endpoints
 	webSvr, err := NewWebServer(svc, "127.0.0.1", 19081)
 	require.NoError(t, err)
-	defer webSvr.Close()
+	defer func() { _ = webSvr.Close() }()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/snapshot", nil)
 	w := httptest.NewRecorder()
@@ -92,6 +93,7 @@ func TestGRSService_InitAndControls(t *testing.T) {
 }
 
 func TestGRSService_SilentDropSimulation(t *testing.T) {
+	t.Parallel()
 	cfg := &config.GRSConfig{
 		GRS: config.GRSStationConfig{
 			SIPHost:      "127.0.0.1",
@@ -106,7 +108,7 @@ func TestGRSService_SilentDropSimulation(t *testing.T) {
 
 	svc, err := NewService(cfg)
 	require.NoError(t, err)
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 
 	// Test client node sending OPTIONS
 	clientNode, err := sip.NewSIPNode(sip.SIPNodeConfig{
@@ -114,7 +116,7 @@ func TestGRSService_SilentDropSimulation(t *testing.T) {
 		Port: 19062,
 	})
 	require.NoError(t, err)
-	defer clientNode.Close()
+	defer func() { _ = clientNode.Close() }()
 
 	// 1. Normal state -> OPTIONS succeeds
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

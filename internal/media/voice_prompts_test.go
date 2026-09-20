@@ -21,6 +21,7 @@ import (
 )
 
 func TestVoicePrompts_EmbeddedSamples(t *testing.T) {
+	t.Parallel()
 	controller := GetControllerVoiceSamples()
 	if len(controller) == 0 {
 		t.Fatal("expected controller voice samples, got none")

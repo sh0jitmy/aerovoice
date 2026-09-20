@@ -27,6 +27,7 @@ import (
 )
 
 func TestToneGenerator(t *testing.T) {
+	t.Parallel()
 	gen := NewToneGenerator()
 	samples10ms := gen.Generate1kHzTone(80)
 	assert.Len(t, samples10ms, 80)
@@ -53,6 +54,7 @@ func TestToneGenerator(t *testing.T) {
 }
 
 func TestStreamStats_RxJitter(t *testing.T) {
+	t.Parallel()
 	stats := NewStreamStats("TEST-CH")
 	now := time.Now()
 
@@ -66,7 +68,7 @@ func TestStreamStats_RxJitter(t *testing.T) {
 	snap := stats.Snapshot()
 	assert.Equal(t, uint64(10), snap.PacketsReceived)
 	assert.Equal(t, 10, snap.DetectedPtime)
-	assert.Equal(t, 0.0, snap.LossRate)
+	assert.InDelta(t, 0.0, snap.LossRate, 0.001)
 	assert.Less(t, snap.RxJitterMs, 1.0)
 
 	// Now introduce jitter (packet 11 arrives late by 25ms)
@@ -76,6 +78,7 @@ func TestStreamStats_RxJitter(t *testing.T) {
 }
 
 func TestJitterBuffer_OrderAndPop(t *testing.T) {
+	t.Parallel()
 	jb := NewJitterBuffer(40, false)
 
 	// Push packets out of order: 2, 1, 3
@@ -103,6 +106,7 @@ func TestJitterBuffer_OrderAndPop(t *testing.T) {
 }
 
 func TestRecorder_WAV(t *testing.T) {
+	t.Parallel()
 	tmpDir := t.TempDir()
 	rec, err := NewRecorder(tmpDir)
 	require.NoError(t, err)
@@ -118,7 +122,7 @@ func TestRecorder_WAV(t *testing.T) {
 
 	assert.Equal(t, "test-rec-1", meta.ID)
 	assert.Equal(t, "TWR 118.100MHz", meta.Channel)
-	assert.Equal(t, 1.0, meta.DurationS)
+	assert.InDelta(t, 1.0, meta.DurationS, 0.05)
 
 	// Retrieve recordings list
 	list := rec.GetRecordings()
@@ -140,6 +144,7 @@ func TestRecorder_WAV(t *testing.T) {
 }
 
 func TestRTPSession_TxRxLoopback(t *testing.T) {
+	t.Parallel()
 	var receivedExt *ed137.RadioHeaderExtension
 	var receivedSamples []int16
 	var wg sync.WaitGroup
@@ -159,10 +164,10 @@ func TestRTPSession_TxRxLoopback(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	defer rxSession.Close()
+	defer func() { _ = rxSession.Close() }()
 
 	rxPort := rxSession.LocalPort()
-	assert.Greater(t, rxPort, 0)
+	assert.Positive(t, rxPort)
 
 	// Sender session
 	txSession, err := NewRTPSession(RTPSessionConfig{
@@ -173,7 +178,7 @@ func TestRTPSession_TxRxLoopback(t *testing.T) {
 		ChannelName: "TEST-TX",
 	})
 	require.NoError(t, err)
-	defer txSession.Close()
+	defer func() { _ = txSession.Close() }()
 
 	// Start transmitting with PTT ON and 1kHz tone
 	toneGen := NewToneGenerator()

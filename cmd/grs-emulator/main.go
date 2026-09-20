@@ -58,14 +58,14 @@ func main() {
 		slog.Error("Failed to initialize GRS service", "error", err)
 		os.Exit(1)
 	}
-	defer svc.Close()
+	defer func() { _ = svc.Close() }()
 
 	webSvr, err := grs.NewWebServer(svc, cfg.GRS.WebHost, cfg.GRS.WebPort)
 	if err != nil {
 		slog.Error("Failed to start GRS Web Console", "error", err)
 		os.Exit(1)
 	}
-	defer webSvr.Close()
+	defer func() { _ = webSvr.Close() }()
 
 	if err := webSvr.Start(); err != nil {
 		slog.Error("Failed to launch GRS Web server", "error", err)

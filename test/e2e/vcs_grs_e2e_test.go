@@ -35,6 +35,7 @@ import (
 )
 
 func TestE2E_VCS_GRS_FullStack(t *testing.T) {
+	t.Parallel()
 	tempDir := t.TempDir()
 	recDir := filepath.Join(tempDir, "recordings")
 
@@ -73,11 +74,11 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 
 	grsSvc, err := grs.NewService(grsCfg)
 	require.NoError(t, err)
-	defer grsSvc.Close()
+	defer func() { _ = grsSvc.Close() }()
 
 	grsWeb, err := grs.NewWebServer(grsSvc, grsCfg.GRS.WebHost, grsCfg.GRS.WebPort)
 	require.NoError(t, err)
-	defer grsWeb.Close()
+	defer func() { _ = grsWeb.Close() }()
 	require.NoError(t, grsWeb.Start())
 
 	// 2. Initialize VCS Console
@@ -116,39 +117,39 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 
 	vcsSvc, err := vcs.NewVCSService(vcsCfg, recorder)
 	require.NoError(t, err)
-	defer vcsSvc.Close()
+	defer func() { _ = vcsSvc.Close() }()
 
 	vcsWeb, err := vcs.NewWebServer(vcsSvc, recorder, vcsCfg.VCS.WebHost, vcsCfg.VCS.WebPort)
 	require.NoError(t, err)
-	defer vcsWeb.Close()
+	defer func() { _ = vcsWeb.Close() }()
 
 	// Allow servers to bind
 	time.Sleep(50 * time.Millisecond)
 
 	// 3. Test GRS Web Console Snapshot
 	{
-		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/snapshot", grsWebPort))
-		require.NoError(t, err)
-		defer resp.Body.Close()
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		snapResp, snapErr := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/snapshot", grsWebPort))
+		require.NoError(t, snapErr)
+		defer func() { _ = snapResp.Body.Close() }()
+		assert.Equal(t, http.StatusOK, snapResp.StatusCode)
 
 		var snap map[string]any
-		err = json.NewDecoder(resp.Body).Decode(&snap)
-		require.NoError(t, err)
+		decodeErr := json.NewDecoder(snapResp.Body).Decode(&snap)
+		require.NoError(t, decodeErr)
 		assert.Equal(t, "E2E-GRS-Station", snap["station_name"])
 	}
 
 	// 4. Test VCS Web Console UI Pages
 	{
-		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", vcsWebPort))
-		require.NoError(t, err)
-		defer resp.Body.Close()
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		vcsResp, vcsErr := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", vcsWebPort))
+		require.NoError(t, vcsErr)
+		defer func() { _ = vcsResp.Body.Close() }()
+		assert.Equal(t, http.StatusOK, vcsResp.StatusCode)
 
 		// Radio channels partial
-		respChannels, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ui/components/radio-channels", vcsWebPort))
-		require.NoError(t, err)
-		defer respChannels.Body.Close()
+		respChannels, chErr := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ui/components/radio-channels", vcsWebPort))
+		require.NoError(t, chErr)
+		defer func() { _ = respChannels.Body.Close() }()
 		assert.Equal(t, http.StatusOK, respChannels.StatusCode)
 	}
 

@@ -35,9 +35,10 @@ type BufferedPacket struct {
 // PacketHeap implements heap.Interface for ordering packets by SequenceNumber/Timestamp.
 type PacketHeap []*BufferedPacket
 
-func (h PacketHeap) Len() int           { return len(h) }
+func (h PacketHeap) Len() int { return len(h) }
 func (h PacketHeap) Less(i, j int) bool {
 	// Sequence number ordering with rollover handling
+	//nolint:gosec // G115: standard RTP sequence number modular comparison
 	diff := int16(h[i].SequenceNumber - h[j].SequenceNumber)
 	return diff < 0
 }
@@ -64,12 +65,12 @@ func (h *PacketHeap) Pop() interface{} {
 
 // JitterBuffer is a tunable packet reordering and buffering queue.
 type JitterBuffer struct {
-	mu           sync.Mutex
-	pq           PacketHeap
-	targetDelay  time.Duration
-	adaptive     bool
-	droppedLate  uint64
-	started      bool
+	mu             sync.Mutex
+	pq             PacketHeap
+	targetDelay    time.Duration
+	adaptive       bool
+	droppedLate    uint64
+	started        bool
 	playoutBase    time.Time
 	firstPktTime   time.Time
 	firstTimestamp uint32
@@ -121,6 +122,7 @@ func (jb *JitterBuffer) Push(seq uint16, timestamp uint32, payload []byte) {
 		jb.playoutBase = now.Add(jb.targetDelay)
 	}
 
+	//nolint:gosec // G115: RTP timestamp difference calculation
 	tsDiff := int32(timestamp - jb.firstTimestamp)
 	playTime := jb.playoutBase.Add(time.Duration(tsDiff/8) * time.Millisecond)
 

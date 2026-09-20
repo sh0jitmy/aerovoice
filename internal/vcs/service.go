@@ -161,15 +161,16 @@ func NewVCSService(cfg *config.VCSConfig, recorder *media.Recorder) (*VCSService
 	}
 
 	svc := &VCSService{
-		cfg:          cfg,
-		recorder:     recorder,
-		sipNode:      sipNode,
-		channels:     make(map[string]*RadioChannel),
+		cfg:      cfg,
+		recorder: recorder,
+		sipNode:  sipNode,
+		channels: make(map[string]*RadioChannel),
 		phone: &PhoneCallState{
 			mode:        "normal",
 			voicePlayer: media.NewVoicePromptPlayer(media.GetTelephonyVoiceSamples(), true),
 		},
-		supervision:  make(map[string]*SupervisionStatus),
+		supervision: make(map[string]*SupervisionStatus),
+		//nolint:gosec // G115: port fits in int32
 		nextRTPPort:  int32(vcsCore.RTPPortStart),
 		ctx:          ctx,
 		cancel:       cancel,
@@ -397,7 +398,7 @@ func (s *VCSService) DisconnectChannel(ctx context.Context, channelID string) er
 
 	if rtpSess != nil {
 		rtpSess.StopTx()
-		rtpSess.Close()
+		_ = rtpSess.Close()
 	}
 
 	if activeCall != nil {
@@ -786,7 +787,7 @@ func (s *VCSService) HangupPhone(ctx context.Context) error {
 
 	if rtpSess != nil {
 		rtpSess.StopTx()
-		rtpSess.Close()
+		_ = rtpSess.Close()
 	}
 
 	if call != nil {

@@ -34,11 +34,12 @@ func getFreePort(t *testing.T) int {
 	require.NoError(t, err)
 	l, err := net.ListenTCP("tcp", addr)
 	require.NoError(t, err)
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port
 }
 
 func TestSDP_BuildAndParse(t *testing.T) {
+	t.Parallel()
 	sdpBytes, err := BuildRadioSDP("127.0.0.1", 10000, codec.PayloadTypePCMA, 10)
 	require.NoError(t, err)
 	assert.Contains(t, string(sdpBytes), "m=audio 10000 RTP/AVP 8")
@@ -66,6 +67,7 @@ func TestSDP_BuildAndParse(t *testing.T) {
 }
 
 func TestSIPNode_PingOptions(t *testing.T) {
+	t.Parallel()
 	portA := getFreePort(t)
 	portB := getFreePort(t)
 
@@ -74,14 +76,14 @@ func TestSIPNode_PingOptions(t *testing.T) {
 		Port: portB,
 	})
 	require.NoError(t, err)
-	defer nodeB.Close()
+	defer func() { _ = nodeB.Close() }()
 
 	nodeA, err := NewSIPNode(SIPNodeConfig{
 		Host: "127.0.0.1",
 		Port: portA,
 	})
 	require.NoError(t, err)
-	defer nodeA.Close()
+	defer func() { _ = nodeA.Close() }()
 
 	time.Sleep(50 * time.Millisecond)
 
@@ -107,6 +109,7 @@ func TestSIPNode_PingOptions(t *testing.T) {
 }
 
 func TestSIPNode_CallAndHangup(t *testing.T) {
+	t.Parallel()
 	portVCS := getFreePort(t)
 	portGRS := getFreePort(t)
 
@@ -131,14 +134,14 @@ func TestSIPNode_CallAndHangup(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
-	defer grsNode.Close()
+	defer func() { _ = grsNode.Close() }()
 
 	vcsNode, err := NewSIPNode(SIPNodeConfig{
 		Host: "127.0.0.1",
 		Port: portVCS,
 	})
 	require.NoError(t, err)
-	defer vcsNode.Close()
+	defer func() { _ = vcsNode.Close() }()
 
 	time.Sleep(50 * time.Millisecond)
 
