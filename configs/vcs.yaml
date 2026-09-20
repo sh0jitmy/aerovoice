@@ -1,0 +1,40 @@
+vcs:
+  sip_host: "127.0.0.1"
+  sip_port: 5060
+  rtp_host: "127.0.0.1"
+  rtp_port_start: 10000
+  web_host: "0.0.0.0"
+  web_port: 8082
+  default_ptime: 10
+  default_jitter_buffer_ms: 40
+
+channels:
+  - id: "ch-twr"
+    name: "TWR Main"
+    frequency: "118.100 MHz"
+    grs_sip_uri: "sip:radio-twr@127.0.0.1:5070"
+    role: "Main"
+    ptime: 10
+    jitter_buffer_ms: 40
+  - id: "ch-app"
+    name: "APP Radar"
+    frequency: "120.500 MHz"
+    grs_sip_uri: "sip:radio-app@127.0.0.1:5072"
+    role: "Main"
+    ptime: 20
+    jitter_buffer_ms: 40
+
+telephony:
+  direct_access:
+    - id: "da-twr"
+      name: "TWR Tower"
+      target_sip_uri: "sip:101@127.0.0.1:5070"
+    - id: "da-app"
+      name: "APP Approach"
+      target_sip_uri: "sip:102@127.0.0.1:5070"
+    - id: "da-tone-test"
+      name: "1kHz Tone Test"
+      target_sip_uri: "sip:tone-test@127.0.0.1:5070"
+    - id: "da-echo-test"
+      name: "Echo Loopback Test"
+      target_sip_uri: "sip:echo-test@127.0.0.1:5070"

@@ -1,6 +1,6 @@
 # Makefile for Go Development & Custom Skills Management
 
-.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build release-check release-snapshot license-check license-add migration-diff clean openapi-lint publish-pr ai-pr run sqlite-e2e frontend-e2e docker-e2e ssg-build demo
+.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build release-check release-snapshot license-check license-add migration-diff clean openapi-lint publish-pr ai-pr run sqlite-e2e frontend-e2e vcs-frontend-e2e docker-e2e ssg-build demo
 
 help:
 	@echo "Available commands:"
@@ -16,6 +16,7 @@ help:
 	@echo "    run              Run local standalone stack (Core API + Web Dashboard)"
 	@echo "    sqlite-e2e       Run fast standalone SQLite E2E test (No-Docker)"
 	@echo "    frontend-e2e     Run standalone HTMX frontend E2E test & snapshot suite"
+	@echo "    vcs-frontend-e2e Run Aerovoice VCS HTMX frontend E2E test & report suite"
 	@echo "    docker-e2e       Run full-stack Docker Compose E2E test & Grafana assertions"
 	@echo "    ssg-build        Generate pre-rendered static site HTML and assets (SSG)"
 	@echo "    demo             Launch full-stack interactive demo with seeded data"
@@ -79,6 +80,45 @@ build: generate
 	@mkdir -p bin
 	@go build -v -o bin/app ./cmd/app
 	@go build -v -o bin/web ./cmd/web
+	@go build -v -o bin/vcs ./cmd/vcs
+	@go build -v -o bin/grs-emulator ./cmd/grs-emulator
+
+vcs-build:
+	@echo "==> Building Aerovoice VCS Console..."
+	@mkdir -p bin
+	@go build -v -o bin/vcs ./cmd/vcs
+
+grs-build:
+	@echo "==> Building Aerovoice GRS Emulator..."
+	@mkdir -p bin
+	@go build -v -o bin/grs-emulator ./cmd/grs-emulator
+
+vcs-run:
+	@echo "==> Starting Aerovoice VCS Console on http://127.0.0.1:8082..."
+	@go run ./cmd/vcs -config configs/vcs.yaml
+
+grs-run:
+	@echo "==> Starting Aerovoice GRS Emulator on http://127.0.0.1:8081..."
+	@go run ./cmd/grs-emulator -config configs/grs.yaml
+
+demo-vcs:
+	@echo "==> Launching Aerovoice VCS & GRS Interactive 2-Screen Demo..."
+	@bash scripts/aerovoice_demo.sh
+
+aerovoice-test:
+	@echo "==> Running Aerovoice ED-137 Radio & Telephony Verification Test Suite..."
+	@go test -v ./internal/ed137 ./internal/media/... ./internal/sip ./internal/channel ./internal/pcap ./internal/vcs ./internal/grs ./test/e2e
+
+build-cross:
+	@echo "==> Cross-compiling for Windows and macOS (CGO_ENABLED=0 Pure Go)..."
+	@mkdir -p bin/dist
+	@GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dist/vcs-windows-amd64.exe ./cmd/vcs
+	@GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dist/grs-windows-amd64.exe ./cmd/grs-emulator
+	@GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o bin/dist/vcs-darwin-arm64 ./cmd/vcs
+	@GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o bin/dist/grs-darwin-arm64 ./cmd/grs-emulator
+	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dist/vcs-darwin-amd64 ./cmd/vcs
+	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dist/grs-darwin-amd64 ./cmd/grs-emulator
+	@echo "✅ Cross-compilation completed in bin/dist/"
 
 run: build
 	@echo "==> Starting local standalone servers..."
@@ -91,6 +131,10 @@ sqlite-e2e: build
 frontend-e2e: build
 	@echo "==> Running Standalone HTMX Frontend E2E tests..."
 	@bash scripts/frontend_e2e.sh
+
+vcs-frontend-e2e: vcs-build grs-build
+	@echo "==> Running Aerovoice VCS HTMX Frontend E2E test suite..."
+	@bash scripts/vcs_frontend_e2e.sh
 
 docker-e2e:
 	@echo "==> Running Full-Stack Docker Compose E2E tests..."
