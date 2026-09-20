@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -115,18 +116,18 @@ func TestSIPNode_CallAndHangup(t *testing.T) {
 	answerSDP, err := BuildRadioSDP("127.0.0.1", 20000, codec.PayloadTypePCMA, 10)
 	require.NoError(t, err)
 
-	var inviteReceived bool
-	var byeReceived bool
+	var inviteReceived atomic.Bool
+	var byeReceived atomic.Bool
 
 	grsNode, err := NewSIPNode(SIPNodeConfig{
 		Host: "127.0.0.1",
 		Port: portGRS,
 		OnInvite: func(caller, callID string, offer []byte) ([]byte, error) {
-			inviteReceived = true
+			inviteReceived.Store(true)
 			return answerSDP, nil
 		},
 		OnBye: func(callID string) {
-			byeReceived = true
+			byeReceived.Store(true)
 		},
 	})
 	require.NoError(t, err)
@@ -149,7 +150,7 @@ func TestSIPNode_CallAndHangup(t *testing.T) {
 	call, respSDP, err := vcsNode.Call(ctx, targetURI, offerSDP)
 	require.NoError(t, err)
 	require.NotNil(t, call)
-	assert.True(t, inviteReceived)
+	assert.True(t, inviteReceived.Load())
 
 	mediaInfo, err := ParseRadioSDP(respSDP)
 	require.NoError(t, err)
@@ -160,5 +161,5 @@ func TestSIPNode_CallAndHangup(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(50 * time.Millisecond)
-	assert.True(t, byeReceived)
+	assert.True(t, byeReceived.Load())
 }

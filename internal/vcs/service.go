@@ -378,31 +378,39 @@ func (s *VCSService) DisconnectChannel(ctx context.Context, channelID string) er
 	}
 
 	ch.mu.Lock()
-	defer ch.mu.Unlock()
-
 	s.LogEvent("SIP", "TX", "INFO", fmt.Sprintf("[%s] Disconnecting: Sending BYE to %s", ch.cfg.Name, ch.cfg.GRSSIPURI))
 
-	if ch.rtpSession != nil {
-		ch.rtpSession.StopTx()
-		ch.rtpSession.Close()
-		ch.rtpSession = nil
-	}
+	rtpSess := ch.rtpSession
+	ch.rtpSession = nil
 
-	if ch.activeCall != nil {
-		_ = ch.activeCall.Hangup(ctx)
-		ch.activeCall = nil
-	}
+	activeCall := ch.activeCall
+	ch.activeCall = nil
 
-	if ch.txRecID != "" {
-		_, _ = s.recorder.StopRecording(ch.txRecID)
-		ch.txRecID = ""
-	}
-	if ch.rxRecID != "" {
-		_, _ = s.recorder.StopRecording(ch.rxRecID)
-		ch.rxRecID = ""
-	}
+	txRecID := ch.txRecID
+	ch.txRecID = ""
+
+	rxRecID := ch.rxRecID
+	ch.rxRecID = ""
 
 	ch.fsm.TransitionToDisconnected("User requested disconnect")
+	ch.mu.Unlock()
+
+	if rtpSess != nil {
+		rtpSess.StopTx()
+		rtpSess.Close()
+	}
+
+	if activeCall != nil {
+		_ = activeCall.Hangup(ctx)
+	}
+
+	if txRecID != "" {
+		_, _ = s.recorder.StopRecording(txRecID)
+	}
+	if rxRecID != "" {
+		_, _ = s.recorder.StopRecording(rxRecID)
+	}
+
 	s.LogEvent("ED-137", "INT", "INFO", fmt.Sprintf("[%s] Disconnected", ch.cfg.Name))
 	return nil
 }
@@ -756,31 +764,39 @@ func (s *VCSService) DialURI(ctx context.Context, targetURI string, mode string)
 // HangupPhone terminates the active telephone call.
 func (s *VCSService) HangupPhone(ctx context.Context) error {
 	s.phone.mu.Lock()
-	defer s.phone.mu.Unlock()
-
 	if !s.phone.active {
+		s.phone.mu.Unlock()
 		return nil
 	}
 
 	targetURI := s.phone.targetURI
 	s.LogEvent("SIP", "TX", "INFO", fmt.Sprintf("Terminating phone call with %s", targetURI))
-	if s.phone.rtpSession != nil {
-		s.phone.rtpSession.StopTx()
-		s.phone.rtpSession.Close()
-		s.phone.rtpSession = nil
-	}
 
-	if s.phone.activeCall != nil {
-		_ = s.phone.activeCall.Hangup(ctx)
-		s.phone.activeCall = nil
-	}
+	rtpSess := s.phone.rtpSession
+	s.phone.rtpSession = nil
 
-	if s.phone.recID != "" {
-		_, _ = s.recorder.StopRecording(s.phone.recID)
-		s.phone.recID = ""
-	}
+	call := s.phone.activeCall
+	s.phone.activeCall = nil
+
+	recID := s.phone.recID
+	s.phone.recID = ""
 
 	s.phone.active = false
+	s.phone.mu.Unlock()
+
+	if rtpSess != nil {
+		rtpSess.StopTx()
+		rtpSess.Close()
+	}
+
+	if call != nil {
+		_ = call.Hangup(ctx)
+	}
+
+	if recID != "" {
+		_, _ = s.recorder.StopRecording(recID)
+	}
+
 	s.LogEvent("SIP", "INT", "INFO", fmt.Sprintf("Phone call ended (target: %s)", targetURI))
 	slog.Info("Phone call terminated", "target", targetURI)
 	return nil

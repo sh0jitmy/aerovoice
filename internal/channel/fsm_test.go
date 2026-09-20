@@ -18,6 +18,7 @@ package channel
 
 import (
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,8 +30,13 @@ func TestChannelFSM_Transitions(t *testing.T) {
 	fsm := NewChannelFSM("ch-twr")
 	assert.Equal(t, StateDisconnected, fsm.State())
 
-	var transitions []string
+	var (
+		transitions []string
+		mu          sync.Mutex
+	)
 	fsm.AddListener(func(old, new State, reason string) {
+		mu.Lock()
+		defer mu.Unlock()
 		transitions = append(transitions, string(old)+"->"+string(new))
 	})
 
@@ -75,5 +81,7 @@ func TestChannelFSM_Transitions(t *testing.T) {
 	assert.Equal(t, StateDisconnected, fsm.State())
 
 	time.Sleep(50 * time.Millisecond)
+	mu.Lock()
 	assert.NotEmpty(t, transitions)
+	mu.Unlock()
 }

@@ -76,6 +76,7 @@ type Service struct {
 	audioBroadcaster   chan []int16
 
 	eventLogs []LogEntry
+	logMu     sync.RWMutex
 	ctx       context.Context
 	cancel    context.CancelFunc
 }
@@ -277,8 +278,10 @@ func (s *Service) GetSnapshot() StateSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	s.logMu.RLock()
 	logs := make([]LogEntry, len(s.eventLogs))
 	copy(logs, s.eventLogs)
+	s.logMu.RUnlock()
 
 	pttTypeStr := "OFF"
 	if s.rxPTTActive {
@@ -450,18 +453,20 @@ func (s *Service) logEvent(proto, dir, level, msg string) {
 		Level:     level,
 		Message:   msg,
 	}
+	s.logMu.Lock()
 	s.eventLogs = append(s.eventLogs, entry)
 	if len(s.eventLogs) > 200 {
 		s.eventLogs = s.eventLogs[1:]
 	}
+	s.logMu.Unlock()
 	slog.Info("grs_event", "proto", proto, "dir", dir, "level", level, "msg", msg)
 }
 
 // ClearLogs resets the event log buffer.
 func (s *Service) ClearLogs() {
-	s.mu.Lock()
+	s.logMu.Lock()
 	s.eventLogs = make([]LogEntry, 0, 100)
-	s.mu.Unlock()
+	s.logMu.Unlock()
 	s.logEvent("SYS", "INT", "INFO", "GRS event logs cleared by user")
 }
 
