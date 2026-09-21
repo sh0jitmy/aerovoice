@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"path/filepath"
 	"testing"
@@ -42,14 +43,21 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	recorder, err := media.NewRecorder(recDir)
 	require.NoError(t, err)
 
-	// Ports for E2E isolation
-	grsSIPPort := 18070
-	grsRTPPort := 28000
-	grsWebPort := 18081
+	// Dynamically allocate isolated ports for parallel test safety
+	freeUDP1, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	grsSIPPort := freeUDP1.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP1.Close()
 
-	vcsSIPPort := 18060
-	vcsRTPPort := 29000
-	vcsWebPort := 18080
+	freeUDP2, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	vcsSIPPort := freeUDP2.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP2.Close()
+
+	grsRTPPort := grsSIPPort + 500
+	vcsRTPPort := vcsSIPPort + 500
+	grsWebPort := 0
+	vcsWebPort := 0
 
 	// 1. Initialize GRS Emulator
 	grsCfg := &config.GRSConfig{
@@ -128,7 +136,7 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 
 	// 3. Test GRS Web Console Snapshot
 	{
-		snapResp, snapErr := http.Get(fmt.Sprintf("http://127.0.0.1:%d/api/snapshot", grsWebPort))
+		snapResp, snapErr := http.Get(fmt.Sprintf("http://%s/api/snapshot", grsWeb.Addr()))
 		require.NoError(t, snapErr)
 		defer func() { _ = snapResp.Body.Close() }()
 		assert.Equal(t, http.StatusOK, snapResp.StatusCode)
@@ -141,13 +149,13 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 
 	// 4. Test VCS Web Console UI Pages
 	{
-		vcsResp, vcsErr := http.Get(fmt.Sprintf("http://127.0.0.1:%d/", vcsWebPort))
+		vcsResp, vcsErr := http.Get(fmt.Sprintf("http://%s/", vcsWeb.Addr()))
 		require.NoError(t, vcsErr)
 		defer func() { _ = vcsResp.Body.Close() }()
 		assert.Equal(t, http.StatusOK, vcsResp.StatusCode)
 
 		// Radio channels partial
-		respChannels, chErr := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ui/components/radio-channels", vcsWebPort))
+		respChannels, chErr := http.Get(fmt.Sprintf("http://%s/ui/components/radio-channels", vcsWeb.Addr()))
 		require.NoError(t, chErr)
 		defer func() { _ = respChannels.Body.Close() }()
 		assert.Equal(t, http.StatusOK, respChannels.StatusCode)

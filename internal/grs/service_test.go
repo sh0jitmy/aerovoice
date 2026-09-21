@@ -18,6 +18,8 @@ package grs
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,12 +33,18 @@ import (
 
 func TestGRSService_InitAndControls(t *testing.T) {
 	t.Parallel()
+
+	freeUDP, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	sipPort := freeUDP.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP.Close()
+
 	cfg := &config.GRSConfig{
 		GRS: config.GRSStationConfig{
 			SIPHost:      "127.0.0.1",
-			SIPPort:      19070,
+			SIPPort:      sipPort,
 			RTPHost:      "127.0.0.1",
-			RTPPort:      29500,
+			RTPPort:      sipPort + 500,
 			StationName:  "Test-GRS-Station",
 			Frequency:    "118.100 MHz",
 			DefaultPtime: 10,
@@ -94,12 +102,23 @@ func TestGRSService_InitAndControls(t *testing.T) {
 
 func TestGRSService_SilentDropSimulation(t *testing.T) {
 	t.Parallel()
+
+	freeUDP1, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	grsSIPPort := freeUDP1.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP1.Close()
+
+	freeUDP2, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	clientSIPPort := freeUDP2.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP2.Close()
+
 	cfg := &config.GRSConfig{
 		GRS: config.GRSStationConfig{
 			SIPHost:      "127.0.0.1",
-			SIPPort:      19072,
+			SIPPort:      grsSIPPort,
 			RTPHost:      "127.0.0.1",
-			RTPPort:      29502,
+			RTPPort:      grsSIPPort + 500,
 			StationName:  "Drop-Test-GRS",
 			Frequency:    "120.500 MHz",
 			DefaultPtime: 10,
@@ -113,14 +132,16 @@ func TestGRSService_SilentDropSimulation(t *testing.T) {
 	// Test client node sending OPTIONS
 	clientNode, err := sip.NewSIPNode(sip.SIPNodeConfig{
 		Host: "127.0.0.1",
-		Port: 19062,
+		Port: clientSIPPort,
 	})
 	require.NoError(t, err)
 	defer func() { _ = clientNode.Close() }()
 
+	targetURI := fmt.Sprintf("sip:radio@127.0.0.1:%d", grsSIPPort)
+
 	// 1. Normal state -> OPTIONS succeeds
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	rtt, err := clientNode.Ping(ctx, "sip:radio@127.0.0.1:19072")
+	rtt, err := clientNode.Ping(ctx, targetURI)
 	cancel()
 	require.NoError(t, err)
 	assert.Greater(t, rtt, time.Duration(0))
@@ -128,19 +149,25 @@ func TestGRSService_SilentDropSimulation(t *testing.T) {
 	// 2. Enable Silent Drop -> OPTIONS times out
 	svc.SetSilentDrop(true)
 	ctx2, cancel2 := context.WithTimeout(context.Background(), 200*time.Millisecond)
-	_, err = clientNode.Ping(ctx2, "sip:radio@127.0.0.1:19072")
+	_, err = clientNode.Ping(ctx2, targetURI)
 	cancel2()
 	assert.Error(t, err)
 }
 
 func TestGRSService_LoopbackEcho(t *testing.T) {
 	t.Parallel()
+
+	freeUDP, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	sipPort := freeUDP.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP.Close()
+
 	cfg := &config.GRSConfig{
 		GRS: config.GRSStationConfig{
 			SIPHost:      "127.0.0.1",
-			SIPPort:      19073,
+			SIPPort:      sipPort,
 			RTPHost:      "127.0.0.1",
-			RTPPort:      29504,
+			RTPPort:      sipPort + 500,
 			StationName:  "Loopback-Test-GRS",
 			Frequency:    "118.100 MHz",
 			DefaultPtime: 10,

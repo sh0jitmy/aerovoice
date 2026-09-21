@@ -18,6 +18,8 @@ package vcs
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"path/filepath"
 	"testing"
 	"time"
@@ -101,8 +103,18 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	recorder, err := media.NewRecorder(recDir)
 	require.NoError(t, err)
 
-	grsPort := 16070
-	grsRTPPort := 26000
+	freeUDP1, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	grsPort := freeUDP1.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP1.Close()
+
+	freeUDP2, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	vcsSIPPort := freeUDP2.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP2.Close()
+
+	grsRTPPort := grsPort + 500
+	vcsRTPPort := vcsSIPPort + 500
 
 	grsCfg := &config.GRSConfig{
 		GRS: config.GRSStationConfig{
@@ -129,9 +141,9 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	vcsCfg := &config.VCSConfig{
 		VCS: config.VCSCoreConfig{
 			SIPHost:               "127.0.0.1",
-			SIPPort:               16060,
+			SIPPort:               vcsSIPPort,
 			RTPHost:               "127.0.0.1",
-			RTPPortStart:          25000,
+			RTPPortStart:          vcsRTPPort,
 			DefaultPtime:          10,
 			DefaultJitterBufferMs: 40,
 		},
@@ -140,7 +152,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 				ID:             "ch-e2e",
 				Name:           "Tower E2E",
 				Frequency:      "118.100 MHz",
-				GRSSIPURI:      "sip:radio@127.0.0.1:16070",
+				GRSSIPURI:      fmt.Sprintf("sip:radio@127.0.0.1:%d", grsPort),
 				Role:           "Main",
 				Ptime:          10,
 				JitterBufferMs: 40,
@@ -151,7 +163,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 				{
 					ID:           "da-tower",
 					Name:         "Tower Phone",
-					TargetSIPURI: "sip:101@127.0.0.1:16070",
+					TargetSIPURI: fmt.Sprintf("sip:101@127.0.0.1:%d", grsPort),
 				},
 			},
 		},
