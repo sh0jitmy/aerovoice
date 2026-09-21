@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,9 +72,9 @@ type Service struct {
 	// Telephone
 	activePhoneCall *sip.ActiveCall
 
-	// Audio buffer for GRS web speaker & loopback
-	recentAudioSamples []int16
-	audioBroadcaster   chan []int16
+	// Audio buffer for GRS web speaker & loopback FIFO queue
+	loopbackQueue    []int16
+	audioBroadcaster chan []int16
 
 	eventLogs []LogEntry
 	logMu     sync.RWMutex
@@ -126,6 +127,7 @@ func NewService(cfg *config.GRSConfig) (*Service, error) {
 
 	// Initialize RTP Session for GRS
 	rtpCfg := media.RTPSessionConfig{
+		LocalHost:   cfg.GRS.RTPHost,
 		LocalPort:   cfg.GRS.RTPPort,
 		PayloadType: codec.PayloadTypePCMA,
 		Ptime:       svc.ptime,
@@ -176,6 +178,13 @@ func (s *Service) SetAudioSource(src string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.audioSource = src
+	s.loopbackQueue = s.loopbackQueue[:0]
+	if s.voicePlayer != nil {
+		s.voicePlayer.Reset()
+	}
+	if s.telephonyPlayer != nil {
+		s.telephonyPlayer.Reset()
+	}
 	s.logEvent("SYS", "INT", "INFO", fmt.Sprintf("Audio source changed to %s", src))
 }
 
@@ -265,6 +274,7 @@ type StateSnapshot struct {
 	RxLevelDB        float64                   `json:"rx_level_db"`
 	TxSQUActive      bool                      `json:"tx_squ_active"`
 	AudioSource      string                    `json:"audio_source"`
+	VCSSIPURI        string                    `json:"vcs_sip_uri"`
 	Ptime            int                       `json:"ptime"`
 	InjJitterMs      int                       `json:"inj_jitter_ms"`
 	InjLossPct       int                       `json:"inj_loss_pct"`
@@ -300,6 +310,7 @@ func (s *Service) GetSnapshot() StateSnapshot {
 		RxLevelDB:        math.Round(s.rxAudioLevelDB*10) / 10,
 		TxSQUActive:      s.txSQUActive,
 		AudioSource:      s.audioSource,
+		VCSSIPURI:        s.cfg.GRS.VCSSIPURI,
 		Ptime:            s.ptime,
 		InjJitterMs:      s.injJitterMs,
 		InjLossPct:       s.injLossPct,
@@ -346,8 +357,11 @@ func (s *Service) handleRTPPacket(ext *ed137.RadioHeaderExtension, pcmSamples []
 		s.rxAudioLevelDB = -96.0
 	}
 
-	// Buffer for loopback
-	s.recentAudioSamples = pcmSamples
+	// Buffer into loopback FIFO queue (max 10s = 80000 samples)
+	s.loopbackQueue = append(s.loopbackQueue, pcmSamples...)
+	if len(s.loopbackQueue) > 80000 {
+		s.loopbackQueue = s.loopbackQueue[len(s.loopbackQueue)-80000:]
+	}
 
 	// Broadcast to browser speaker
 	select {
@@ -356,13 +370,13 @@ func (s *Service) handleRTPPacket(ext *ed137.RadioHeaderExtension, pcmSamples []
 	}
 }
 
-func (s *Service) handleSIPInvite(caller, callID string, sdpOffer []byte) ([]byte, error) {
+func (s *Service) handleSIPInvite(caller, recipient, callID string, sdpOffer []byte) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.isSessionConnected = true
 	s.clientSIPAddr = caller
-	s.logEvent("SIP", "RX", "INFO", fmt.Sprintf("Received SIP INVITE from %s (CallID: %s)", caller, callID))
+	s.logEvent("SIP", "RX", "INFO", fmt.Sprintf("Received SIP INVITE to %s from %s (CallID: %s)", recipient, caller, callID))
 
 	// Parse client SDP to set remote RTP address
 	mediaInfo, err := sip.ParseRadioSDP(sdpOffer)
@@ -382,8 +396,9 @@ func (s *Service) handleSIPInvite(caller, callID string, sdpOffer []byte) ([]byt
 		return nil, err
 	}
 
-	// If telephone auto-answer is enabled, start sending audio immediately
-	if s.cfg.GRS.Telephone.AutoAnswer {
+	// Only trigger telephone auto-answer for telephony calls (not radio channels)
+	isRadioEndpoint := strings.Contains(strings.ToLower(recipient), "radio")
+	if !isRadioEndpoint && s.cfg.GRS.Telephone.AutoAnswer {
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			s.mu.Lock()
@@ -419,12 +434,10 @@ func (s *Service) handleSIPOptions(caller string) bool {
 }
 
 func (s *Service) generateAudioFrame(nSamples int) []int16 {
-	s.mu.RLock()
-	src := s.audioSource
-	loopback := s.recentAudioSamples
-	s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	switch src {
+	switch s.audioSource {
 	case "pilot_voice":
 		return s.voicePlayer.NextFrame(nSamples)
 	case "telephony_voice":
@@ -436,10 +449,15 @@ func (s *Service) generateAudioFrame(nSamples int) []int16 {
 	case "simulated_voice":
 		return s.toneGen.GenerateSimulatedVoice(nSamples)
 	case "loopback":
-		if len(loopback) >= nSamples {
-			return loopback[:nSamples]
+		// FIFO playout of received VCS audio
+		if len(s.loopbackQueue) >= nSamples {
+			out := make([]int16, nSamples)
+			copy(out, s.loopbackQueue[:nSamples])
+			s.loopbackQueue = s.loopbackQueue[nSamples:]
+			return out
 		}
-		return s.voicePlayer.NextFrame(nSamples)
+		// When buffer has drained or not yet filled, transmit clean silence
+		return make([]int16, nSamples)
 	default:
 		return s.voicePlayer.NextFrame(nSamples)
 	}
@@ -468,4 +486,9 @@ func (s *Service) ClearLogs() {
 	s.eventLogs = make([]LogEntry, 0, 100)
 	s.logMu.Unlock()
 	s.logEvent("SYS", "INT", "INFO", "GRS event logs cleared by user")
+}
+
+// Config returns the GRS configuration.
+func (s *Service) Config() *config.GRSConfig {
+	return s.cfg
 }

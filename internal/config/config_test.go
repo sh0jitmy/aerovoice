@@ -97,4 +97,89 @@ grs:
 	assert.True(t, cfg.GRS.LoopbackEcho)
 	assert.Equal(t, 15, cfg.GRS.Impairment.JitterMs)
 	assert.Equal(t, 5, cfg.GRS.Impairment.LossPercent)
+	assert.Equal(t, "sip:101@127.0.0.1:5060", cfg.GRS.VCSSIPURI)
+}
+
+func TestConfig_EnvOverrides(t *testing.T) {
+	t.Setenv("AEROVOICE_VCS_SIP_PORT", "15060")
+	t.Setenv("AEROVOICE_VCS_WEB_PORT", "18082")
+	t.Setenv("AEROVOICE_GRS_SIP_PORT", "15070")
+	t.Setenv("AEROVOICE_GRS_VCS_SIP_URI", "sip:custom@10.0.0.1:5060")
+
+	tmpDir := t.TempDir()
+	vcsPath := filepath.Join(tmpDir, "vcs.yaml")
+	err := os.WriteFile(vcsPath, []byte("vcs:\n  sip_port: 5060\n  web_port: 8082\n"), 0o600)
+	require.NoError(t, err)
+
+	vcsCfg, err := LoadVCSConfig(vcsPath)
+	require.NoError(t, err)
+	assert.Equal(t, 15060, vcsCfg.VCS.SIPPort)
+	assert.Equal(t, 18082, vcsCfg.VCS.WebPort)
+
+	grsPath := filepath.Join(tmpDir, "grs.yaml")
+	err = os.WriteFile(grsPath, []byte("grs:\n  sip_port: 5070\n"), 0o600)
+	require.NoError(t, err)
+
+	grsCfg, err := LoadGRSConfig(grsPath)
+	require.NoError(t, err)
+	assert.Equal(t, 15070, grsCfg.GRS.SIPPort)
+	assert.Equal(t, "sip:custom@10.0.0.1:5060", grsCfg.GRS.VCSSIPURI)
+}
+
+func TestLoadVCSConfig_RecordingLimits(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 1. Defaults when recording section is omitted
+	yamlData1 := `
+vcs:
+  sip_port: 5060
+`
+	p1 := filepath.Join(tmpDir, "vcs1.yaml")
+	require.NoError(t, os.WriteFile(p1, []byte(yamlData1), 0o600))
+	cfg1, err := LoadVCSConfig(p1)
+	require.NoError(t, err)
+	rec1 := cfg1.GetRecording()
+	assert.Equal(t, 100, rec1.MaxRecordings)
+	assert.Equal(t, 300, rec1.MaxDurationSeconds)
+
+	// 2. Explicit custom configuration within limits
+	yamlData2 := `
+vcs:
+  sip_port: 5060
+recording:
+  max_recordings: 50
+  max_duration_seconds: 120
+`
+	p2 := filepath.Join(tmpDir, "vcs2.yaml")
+	require.NoError(t, os.WriteFile(p2, []byte(yamlData2), 0o600))
+	cfg2, err := LoadVCSConfig(p2)
+	require.NoError(t, err)
+	rec2 := cfg2.GetRecording()
+	assert.Equal(t, 50, rec2.MaxRecordings)
+	assert.Equal(t, 120, rec2.MaxDurationSeconds)
+
+	// 3. Hard limits enforcement (clamped to max 1000 recordings, 1800 seconds)
+	yamlData3 := `
+vcs:
+  sip_port: 5060
+recording:
+  max_recordings: 9999
+  max_duration_seconds: 99999
+`
+	p3 := filepath.Join(tmpDir, "vcs3.yaml")
+	require.NoError(t, os.WriteFile(p3, []byte(yamlData3), 0o600))
+	cfg3, err := LoadVCSConfig(p3)
+	require.NoError(t, err)
+	rec3 := cfg3.GetRecording()
+	assert.Equal(t, 1000, rec3.MaxRecordings, "Must clamp to hard limit 1000")
+	assert.Equal(t, 1800, rec3.MaxDurationSeconds, "Must clamp to hard limit 1800 (30 min)")
+
+	// 4. Environment variable overrides
+	t.Setenv("AEROVOICE_VCS_REC_MAX_RECORDINGS", "200")
+	t.Setenv("AEROVOICE_VCS_REC_MAX_DURATION_SECONDS", "600")
+	cfg4, err := LoadVCSConfig(p1)
+	require.NoError(t, err)
+	rec4 := cfg4.GetRecording()
+	assert.Equal(t, 200, rec4.MaxRecordings)
+	assert.Equal(t, 600, rec4.MaxDurationSeconds)
 }

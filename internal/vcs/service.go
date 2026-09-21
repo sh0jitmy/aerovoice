@@ -342,6 +342,7 @@ func (s *VCSService) ConnectChannel(ctx context.Context, channelID string) error
 	s.LogEvent("SIP", "RX", "INFO", fmt.Sprintf("[%s] Received 200 OK from %s -> Session Established", ch.cfg.Name, ch.cfg.GRSSIPURI))
 
 	rtpSess, err := media.NewRTPSession(media.RTPSessionConfig{
+		LocalHost:      vcsCore.RTPHost,
 		LocalPort:      localRTPPort,
 		RemoteHost:     answer.IP,
 		RemotePort:     answer.Port,
@@ -490,11 +491,11 @@ func (s *VCSService) SendVoiceTransmission(channelID string) error {
 		return err
 	}
 
-	s.LogEvent("ED-137", "TX", "INFO", fmt.Sprintf("[%s] 🗣️ ATC Controller Voice TX: \"Tokyo Tower, Japan Air 123, wind 320 at 10, runway 34 right, cleared to land.\"", ch.cfg.Name))
+	s.LogEvent("ED-137", "TX", "INFO", fmt.Sprintf("[%s] 🗣️ ATC Controller Voice TX: \"テスト、テスト。本日は晴天なり、本日は晴天なり。\"", ch.cfg.Name))
 
-	// Automatically release PTT after speech ends
+	// Automatically release PTT after speech ends (~8.14s duration + 360ms buffer)
 	go func() {
-		time.Sleep(4500 * time.Millisecond)
+		time.Sleep(8500 * time.Millisecond)
 		_ = s.StopPTT(channelID)
 		s.LogEvent("ED-137", "TX", "INFO", fmt.Sprintf("[%s] 🗣️ ATC Controller Voice TX completed (PTT released)", ch.cfg.Name))
 	}()
@@ -682,6 +683,7 @@ func (s *VCSService) DialURI(ctx context.Context, targetURI string, mode string)
 	toneGen := media.NewToneGenerator()
 
 	rtpSess, err := media.NewRTPSession(media.RTPSessionConfig{
+		LocalHost:      vcsCore.RTPHost,
 		LocalPort:      localRTPPort,
 		RemoteHost:     answer.IP,
 		RemotePort:     answer.Port,

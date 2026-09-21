@@ -1,10 +1,16 @@
 vcs:
+  # VCS SIP Server (ED-137 Radio & Telephone Signaling)
   sip_host: "127.0.0.1"
   sip_port: 5060
+
+  # VCS RTP Server base port (Dynamic allocations for radio and telephone calls)
   rtp_host: "127.0.0.1"
   rtp_port_start: 10000
+
+  # VCS Web Management & Controller Console
   web_host: "0.0.0.0"
   web_port: 8082
+
   default_ptime: 10
   default_jitter_buffer_ms: 40
 
@@ -38,3 +44,9 @@ telephony:
     - id: "da-echo-test"
       name: "Echo Loopback Test"
       target_sip_uri: "sip:echo-test@127.0.0.1:5070"
+
+recording:
+  # Maximum number of stored recordings (default: 100 files, hard limit: 1000)
+  max_recordings: 100
+  # Maximum recording duration in seconds per session (default: 300s / 5min, hard limit: 1800s / 30min)
+  max_duration_seconds: 300

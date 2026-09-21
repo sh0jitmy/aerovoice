@@ -1,18 +1,34 @@
 grs:
+  # GRS SIP Server (ED-137 Radio & Telephone Signaling)
   sip_host: "127.0.0.1"
   sip_port: 5070
+
+  # GRS RTP Server (ED-137 Audio Media)
   rtp_host: "127.0.0.1"
   rtp_port: 20000
+
+  # GRS Web Testbench Console (UI & Live Audio Monitor)
   web_host: "0.0.0.0"
   web_port: 8081
+
+  # Station Identity & Frequency
   station_name: "GRS-TWR-118.100"
   frequency: "118.100 MHz"
   default_ptime: 10
   loopback_echo: false
-  audio_source: "pilot_voice" # pilot_voice | tone_1khz | beep_400hz | telephony_voice | loopback
+
+  # Audio Signal Generator Source (pilot_voice | tone_1khz | beep_400hz | telephony_voice | loopback)
+  audio_source: "pilot_voice"
+
+  # Target VCS SIP URI for outbound call testing (Call VCS)
+  vcs_sip_uri: "sip:101@127.0.0.1:5060"
+
+  # Network Impairment Simulation
   impairment:
     jitter_ms: 0
     loss_percent: 0
+
+  # Aeronautical Telephone Auto-Responder
   telephone:
     auto_answer: true
     auto_answer_mode: "tone_1khz" # tone_1khz | loopback | manual

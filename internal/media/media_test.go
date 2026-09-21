@@ -143,6 +143,83 @@ func TestRecorder_WAV(t *testing.T) {
 	assert.Equal(t, "Audio Recording", list2[0].Type)
 }
 
+func TestRecorder_LimitsAndRetention(t *testing.T) {
+	t.Parallel()
+	tmpDir := t.TempDir()
+
+	// Configure with tight limits: 1 second max duration, 3 max recordings
+	rec, err := NewRecorderWithConfig(RecorderConfig{
+		OutputDir:          tmpDir,
+		MaxRecordings:      3,
+		MaxDurationSeconds: 1, // 8000 samples max
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 3, rec.MaxRecordings())
+	assert.Equal(t, 1, rec.MaxDurationSeconds())
+
+	gen := NewToneGenerator()
+
+	// 1. Verify duration capping: Feed 2 seconds of samples (16,000 samples)
+	rec.StartRecording("rec-long-1", "Radio PTT (TX)", "TWR 118.100MHz")
+	rec.AppendSamples("rec-long-1", gen.Generate1kHzTone(16000))
+	meta1, err := rec.StopRecording("rec-long-1")
+	require.NoError(t, err)
+	require.NotNil(t, meta1)
+	// Duration must be capped to exactly 1.0 second (8000 samples)
+	assert.InDelta(t, 1.0, meta1.DurationS, 0.05)
+	firstFile := meta1.FilePath
+	assert.FileExists(t, firstFile)
+
+	// 2. Add 2 more recordings to reach max limit (3 recordings total)
+	time.Sleep(10 * time.Millisecond)
+	rec.StartRecording("rec-2", "Radio SQU (RX)", "APP 120.500MHz")
+	rec.AppendSamples("rec-2", gen.Generate1kHzTone(8000))
+	meta2, err := rec.StopRecording("rec-2")
+	require.NoError(t, err)
+	require.NotNil(t, meta2)
+
+	time.Sleep(10 * time.Millisecond)
+	rec.StartRecording("rec-3", "Phone Call", "Telephony")
+	rec.AppendSamples("rec-3", gen.Generate1kHzTone(8000))
+	meta3, err := rec.StopRecording("rec-3")
+	require.NoError(t, err)
+	require.NotNil(t, meta3)
+
+	assert.Len(t, rec.GetRecordings(), 3)
+	assert.FileExists(t, firstFile)
+
+	// 3. Add 4th recording -> exceeds max limit (3) -> oldest (rec-long-1) must be purged from disk
+	time.Sleep(10 * time.Millisecond)
+	rec.StartRecording("rec-4", "Radio PTT (TX)", "TWR 118.100MHz")
+	rec.AppendSamples("rec-4", gen.Generate1kHzTone(8000))
+	meta4, err := rec.StopRecording("rec-4")
+	require.NoError(t, err)
+	require.NotNil(t, meta4)
+
+	recs := rec.GetRecordings()
+	assert.Len(t, recs, 3)
+	assert.Equal(t, "rec-4", recs[0].ID)
+	assert.Equal(t, "rec-3", recs[1].ID)
+	assert.Equal(t, "rec-2", recs[2].ID)
+
+	// Verify that the oldest WAV file was removed from disk
+	assert.NoFileExists(t, firstFile)
+
+	// 4. Verify startup retention enforcement: create a new recorder with limit=2 on existing 3 files
+	recStartup, err := NewRecorderWithConfig(RecorderConfig{
+		OutputDir:          tmpDir,
+		MaxRecordings:      2,
+		MaxDurationSeconds: 5,
+	})
+	require.NoError(t, err)
+	startupRecs := recStartup.GetRecordings()
+	assert.Len(t, startupRecs, 2)
+	assert.Equal(t, "rec-4", startupRecs[0].ID)
+	assert.Equal(t, "rec-3", startupRecs[1].ID)
+	// rec-2 should have been purged on startup
+	assert.NoFileExists(t, meta2.FilePath)
+}
+
 func TestRTPSession_TxRxLoopback(t *testing.T) {
 	t.Parallel()
 	var receivedExt *ed137.RadioHeaderExtension

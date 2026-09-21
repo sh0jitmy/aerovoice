@@ -30,6 +30,7 @@ type VCSConfig struct {
 	VCS       VCSCoreConfig   `yaml:"vcs"`
 	Channels  []ChannelConfig `yaml:"channels"`
 	Telephony TelephonyConfig `yaml:"telephony"`
+	Recording RecordingConfig `yaml:"recording"`
 
 	mu sync.RWMutex
 }
@@ -69,6 +70,12 @@ type DirectAccessConfig struct {
 	TargetSIPURI string `yaml:"target_sip_uri" json:"target_sip_uri"`
 }
 
+// RecordingConfig represents limits and retention governance for audio recordings.
+type RecordingConfig struct {
+	MaxRecordings      int `yaml:"max_recordings" json:"max_recordings"`
+	MaxDurationSeconds int `yaml:"max_duration_seconds" json:"max_duration_seconds"`
+}
+
 // GRSConfig represents configuration for the GRS emulator.
 type GRSConfig struct {
 	GRS GRSStationConfig `yaml:"grs"`
@@ -87,6 +94,7 @@ type GRSStationConfig struct {
 	DefaultPtime int                 `yaml:"default_ptime"`
 	LoopbackEcho bool                `yaml:"loopback_echo"`
 	AudioSource  string              `yaml:"audio_source"`
+	VCSSIPURI    string              `yaml:"vcs_sip_uri" json:"vcs_sip_uri"`
 	Impairment   GRSImpairmentConfig `yaml:"impairment"`
 	Telephone    GRSTelephoneConfig  `yaml:"telephone"`
 }
@@ -103,6 +111,23 @@ type GRSTelephoneConfig struct {
 	AutoAnswerMode string `yaml:"auto_answer_mode" json:"auto_answer_mode"`
 }
 
+func getEnvString(key, fallback string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if val := os.Getenv(key); val != "" {
+		var n int
+		if _, err := fmt.Sscanf(val, "%d", &n); err == nil && n > 0 {
+			return n
+		}
+	}
+	return fallback
+}
+
 // LoadVCSConfig loads VCS configuration from a YAML file.
 func LoadVCSConfig(path string) (*VCSConfig, error) {
 	cleanPath := filepath.Clean(path)
@@ -116,11 +141,35 @@ func LoadVCSConfig(path string) (*VCSConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal VCS config: %w", err)
 	}
 
+	// Environment variable overrides
+	cfg.VCS.SIPHost = getEnvString("AEROVOICE_VCS_SIP_HOST", cfg.VCS.SIPHost)
+	cfg.VCS.SIPPort = getEnvInt("AEROVOICE_VCS_SIP_PORT", cfg.VCS.SIPPort)
+	cfg.VCS.RTPHost = getEnvString("AEROVOICE_VCS_RTP_HOST", cfg.VCS.RTPHost)
+	cfg.VCS.RTPPortStart = getEnvInt("AEROVOICE_VCS_RTP_PORT_START", cfg.VCS.RTPPortStart)
+	cfg.VCS.WebHost = getEnvString("AEROVOICE_VCS_WEB_HOST", cfg.VCS.WebHost)
+	cfg.VCS.WebPort = getEnvInt("AEROVOICE_VCS_WEB_PORT", cfg.VCS.WebPort)
+
 	if cfg.VCS.DefaultPtime == 0 {
 		cfg.VCS.DefaultPtime = 10
 	}
 	if cfg.VCS.DefaultJitterBufferMs == 0 {
 		cfg.VCS.DefaultJitterBufferMs = 40
+	}
+
+	// Recording limits & governance (Defaults: 100 recordings, 300s/5min; Hard limits: 1000 recordings, 1800s/30min)
+	cfg.Recording.MaxRecordings = getEnvInt("AEROVOICE_VCS_REC_MAX_RECORDINGS", cfg.Recording.MaxRecordings)
+	cfg.Recording.MaxDurationSeconds = getEnvInt("AEROVOICE_VCS_REC_MAX_DURATION_SECONDS", cfg.Recording.MaxDurationSeconds)
+
+	if cfg.Recording.MaxRecordings <= 0 {
+		cfg.Recording.MaxRecordings = 100
+	} else if cfg.Recording.MaxRecordings > 1000 {
+		cfg.Recording.MaxRecordings = 1000
+	}
+
+	if cfg.Recording.MaxDurationSeconds <= 0 {
+		cfg.Recording.MaxDurationSeconds = 300 // 5 minutes
+	} else if cfg.Recording.MaxDurationSeconds > 1800 {
+		cfg.Recording.MaxDurationSeconds = 1800 // 30 minutes
 	}
 
 	return &cfg, nil
@@ -139,11 +188,23 @@ func LoadGRSConfig(path string) (*GRSConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal GRS config: %w", err)
 	}
 
+	// Environment variable overrides
+	cfg.GRS.SIPHost = getEnvString("AEROVOICE_GRS_SIP_HOST", cfg.GRS.SIPHost)
+	cfg.GRS.SIPPort = getEnvInt("AEROVOICE_GRS_SIP_PORT", cfg.GRS.SIPPort)
+	cfg.GRS.RTPHost = getEnvString("AEROVOICE_GRS_RTP_HOST", cfg.GRS.RTPHost)
+	cfg.GRS.RTPPort = getEnvInt("AEROVOICE_GRS_RTP_PORT", cfg.GRS.RTPPort)
+	cfg.GRS.WebHost = getEnvString("AEROVOICE_GRS_WEB_HOST", cfg.GRS.WebHost)
+	cfg.GRS.WebPort = getEnvInt("AEROVOICE_GRS_WEB_PORT", cfg.GRS.WebPort)
+	cfg.GRS.VCSSIPURI = getEnvString("AEROVOICE_GRS_VCS_SIP_URI", cfg.GRS.VCSSIPURI)
+
+	if cfg.GRS.VCSSIPURI == "" {
+		cfg.GRS.VCSSIPURI = "sip:101@127.0.0.1:5060"
+	}
 	if cfg.GRS.DefaultPtime == 0 {
 		cfg.GRS.DefaultPtime = 10
 	}
 	if cfg.GRS.AudioSource == "" {
-		cfg.GRS.AudioSource = "tone_1khz"
+		cfg.GRS.AudioSource = "pilot_voice"
 	}
 
 	return &cfg, nil
@@ -199,4 +260,11 @@ func (c *VCSConfig) GetTelephony() TelephonyConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Telephony
+}
+
+// GetRecording returns a copy of the recording configuration.
+func (c *VCSConfig) GetRecording() RecordingConfig {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.Recording
 }

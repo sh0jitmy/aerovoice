@@ -132,3 +132,59 @@ func TestGRSService_SilentDropSimulation(t *testing.T) {
 	cancel2()
 	assert.Error(t, err)
 }
+
+func TestGRSService_LoopbackEcho(t *testing.T) {
+	t.Parallel()
+	cfg := &config.GRSConfig{
+		GRS: config.GRSStationConfig{
+			SIPHost:      "127.0.0.1",
+			SIPPort:      19073,
+			RTPHost:      "127.0.0.1",
+			RTPPort:      29504,
+			StationName:  "Loopback-Test-GRS",
+			Frequency:    "118.100 MHz",
+			DefaultPtime: 10,
+		},
+	}
+
+	svc, err := NewService(cfg)
+	require.NoError(t, err)
+	defer func() { _ = svc.Close() }()
+
+	svc.SetAudioSource("loopback")
+	snap := svc.GetSnapshot()
+	assert.Equal(t, "loopback", snap.AudioSource)
+
+	// When loopback queue is empty, generateAudioFrame should return silence (all zeros)
+	emptyFrame := svc.generateAudioFrame(80)
+	assert.Len(t, emptyFrame, 80)
+	for _, s := range emptyFrame {
+		assert.Equal(t, int16(0), s)
+	}
+
+	// Feed 160 samples (2 frames of 80) into handleRTPPacket
+	testSamples := make([]int16, 160)
+	for i := range testSamples {
+		testSamples[i] = int16(i + 1)
+	}
+	svc.handleRTPPacket(nil, testSamples, 1)
+
+	// 1st frame should pop first 80 samples
+	frame1 := svc.generateAudioFrame(80)
+	assert.Len(t, frame1, 80)
+	assert.Equal(t, int16(1), frame1[0])
+	assert.Equal(t, int16(80), frame1[79])
+
+	// 2nd frame should pop next 80 samples
+	frame2 := svc.generateAudioFrame(80)
+	assert.Len(t, frame2, 80)
+	assert.Equal(t, int16(81), frame2[0])
+	assert.Equal(t, int16(160), frame2[79])
+
+	// 3rd frame (queue exhausted) should return clean silence, not fallback
+	frame3 := svc.generateAudioFrame(80)
+	assert.Len(t, frame3, 80)
+	for _, s := range frame3 {
+		assert.Equal(t, int16(0), s)
+	}
+}

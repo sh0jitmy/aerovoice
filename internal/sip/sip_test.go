@@ -125,7 +125,7 @@ func TestSIPNode_CallAndHangup(t *testing.T) {
 	grsNode, err := NewSIPNode(SIPNodeConfig{
 		Host: "127.0.0.1",
 		Port: portGRS,
-		OnInvite: func(caller, callID string, offer []byte) ([]byte, error) {
+		OnInvite: func(caller, recipient, callID string, offer []byte) ([]byte, error) {
 			inviteReceived.Store(true)
 			return answerSDP, nil
 		},

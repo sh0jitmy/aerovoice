@@ -303,7 +303,7 @@ func (w *WebServer) handleUIRadioChannels(rw http.ResponseWriter, r *http.Reques
 
 		<div class="ptt-button-container">
 			{{if eq .State "disconnected"}}
-				<button class="btn-neon-small" style="width:100%; padding: 0.75rem;" onclick="fetch('/api/radio/connect?id={{.ID}}', {method:'POST'})">
+				<button class="btn-neon-small" style="width:100%; padding: 0.75rem;" onclick="handleConnectChannel('{{.ID}}')">
 					&#128225; Connect to GRS
 				</button>
 			{{else}}
@@ -347,7 +347,7 @@ func (w *WebServer) handleUITelephony(rw http.ResponseWriter, r *http.Request) {
 		<div class="card-body">
 			<div class="da-grid">
 				{{range .DAs}}
-				<div class="da-button" onclick="fetch('/api/telephony/dial?da={{.ID}}&mode=normal', {method:'POST'})">
+				<div class="da-button" onclick="handleDialDA('{{.ID}}', 'normal')">
 					<div class="da-title">{{.Name}}</div>
 					<div class="da-uri">{{.TargetSIPURI}}</div>
 				</div>
@@ -380,13 +380,13 @@ func (w *WebServer) handleUITelephony(rw http.ResponseWriter, r *http.Request) {
 			{{else}}
 				<p class="muted" style="margin-bottom: 1rem;">No active phone call. Select a Direct Access contact or test mode to start a call.</p>
 				<div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-					<button class="btn-primary" onclick="fetch('/api/telephony/dial?da=da-speech-test&mode=speech', {method:'POST'})">
+					<button class="btn-primary" onclick="handleDialDA('da-speech-test', 'speech')">
 						🗣️ Human Speech Test Call
 					</button>
-					<button class="btn-secondary" onclick="fetch('/api/telephony/dial?da=da-tone-test&mode=tone', {method:'POST'})">
+					<button class="btn-secondary" onclick="handleDialDA('da-tone-test', 'tone')">
 						1kHz Tone Test Call
 					</button>
-					<button class="btn-secondary" onclick="fetch('/api/telephony/dial?da=da-echo-test&mode=echo', {method:'POST'})">
+					<button class="btn-secondary" onclick="handleDialDA('da-echo-test', 'echo')">
 						300ms Echo Loopback Test
 					</button>
 				</div>

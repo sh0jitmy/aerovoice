@@ -69,8 +69,8 @@ func extractPCMFromWAV(wavData []byte) []int16 {
 	return samples
 }
 
-// GetControllerVoiceSamples returns 8kHz 16-bit PCM for ATC controller instructions.
-// "Tokyo Tower, Japan Air 123, wind 320 at 10, runway 34 right, cleared to land."
+// GetControllerVoiceSamples returns 8kHz 16-bit PCM for ATC controller test voice.
+// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
 func GetControllerVoiceSamples() []int16 {
 	initVoices()
 	out := make([]int16, len(controllerSamples))
@@ -78,8 +78,8 @@ func GetControllerVoiceSamples() []int16 {
 	return out
 }
 
-// GetPilotVoiceSamples returns 8kHz 16-bit PCM for aircraft pilot readback.
-// "Cleared to land runway 34 right, Japan Air 123, good day."
+// GetPilotVoiceSamples returns 8kHz 16-bit PCM for aircraft pilot test voice.
+// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
 func GetPilotVoiceSamples() []int16 {
 	initVoices()
 	out := make([]int16, len(pilotSamples))
@@ -87,8 +87,8 @@ func GetPilotVoiceSamples() []int16 {
 	return out
 }
 
-// GetTelephonyVoiceSamples returns 8kHz 16-bit PCM for telephone audio quality testing.
-// "This is an ED-137 aeronautical telephone audio quality verification call..."
+// GetTelephonyVoiceSamples returns 8kHz 16-bit PCM for telephone audio quality test voice.
+// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
 func GetTelephonyVoiceSamples() []int16 {
 	initVoices()
 	out := make([]int16, len(telephonySamples))

@@ -147,7 +147,10 @@ func (w *WebServer) handleSilentDrop(rw http.ResponseWriter, r *http.Request) {
 func (w *WebServer) handleCall(rw http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("target")
 	if target == "" {
-		target = "sip:101@127.0.0.1:5060"
+		target = w.svc.Config().GRS.VCSSIPURI
+		if target == "" {
+			target = "sip:101@127.0.0.1:5060"
+		}
 	}
 	err := w.svc.CallVCS(target)
 	if err != nil {
@@ -376,11 +379,11 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
 
       <div style="margin-bottom:12px;">
         <label style="display:block; margin-bottom:6px; font-weight:bold;">Audio Signal Generator (送信音声):</label>
-        <label><input type="radio" name="audiosrc" value="pilot_voice" {{if or (eq .AudioSource "pilot_voice") (eq .AudioSource "")}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>Pilot Readback Voice (Human Speech)</strong></label><br>
+        <label><input type="radio" name="audiosrc" value="pilot_voice" {{if or (eq .AudioSource "pilot_voice") (eq .AudioSource "")}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>パイロット音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
+        <label><input type="radio" name="audiosrc" value="telephony_voice" {{if eq .AudioSource "telephony_voice"}}checked{{end}} onchange="changeSource(this.value)"> 📞 <strong>電話音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
         <label><input type="radio" name="audiosrc" value="tone_1khz" {{if eq .AudioSource "tone_1khz"}}checked{{end}} onchange="changeSource(this.value)"> 1 kHz Sine Tone</label><br>
         <label><input type="radio" name="audiosrc" value="beep_400hz" {{if eq .AudioSource "beep_400hz"}}checked{{end}} onchange="changeSource(this.value)"> 400 Hz ATC Beep</label><br>
         <label><input type="radio" name="audiosrc" value="simulated_voice" {{if eq .AudioSource "simulated_voice"}}checked{{end}} onchange="changeSource(this.value)"> Simulated Speech Formants</label><br>
-        <label><input type="radio" name="audiosrc" value="telephony_voice" {{if eq .AudioSource "telephony_voice"}}checked{{end}} onchange="changeSource(this.value)"> 📞 Telephony Quality Voice</label><br>
         <label><input type="radio" name="audiosrc" value="loopback" {{if eq .AudioSource "loopback"}}checked{{end}} onchange="changeSource(this.value)"> 🔁 Loopback Echo (VCS Audio)</label>
       </div>
 
@@ -439,6 +442,7 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
     let isSpeakerOn = false;
     let audioCtx = null;
     let ws = null;
+    let nextPlayTime = 0;
 
     function initAudio() {
       if (!audioCtx) {
@@ -457,10 +461,18 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
           }
           const audioBuffer = audioCtx.createBuffer(1, float32Array.length, 8000);
           audioBuffer.copyToChannel(float32Array, 0);
+
+          const now = audioCtx.currentTime;
+          const targetBuffer = 0.020; // 20ms target jitter buffer
+          const maxBuffer = 0.050;    // 50ms maximum buffer cap (strict real-time constraint)
+          if (nextPlayTime < now || nextPlayTime > now + maxBuffer) {
+            nextPlayTime = now + targetBuffer;
+          }
           const src = audioCtx.createBufferSource();
           src.buffer = audioBuffer;
           src.connect(audioCtx.destination);
-          src.start();
+          src.start(nextPlayTime);
+          nextPlayTime += audioBuffer.duration;
         };
       }
     }
@@ -470,10 +482,17 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
       const btn = document.getElementById('btn-speaker');
       if (isSpeakerOn) {
         initAudio();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
         btn.innerText = '🔊 Speaker: ON';
         btn.classList.add('active');
       } else {
+        if (audioCtx) {
+          try {
+            audioCtx.close();
+          } catch (e) {}
+          audioCtx = null;
+        }
+        nextPlayTime = 0;
         btn.innerText = '🔇 Speaker: OFF';
         btn.classList.remove('active');
       }
@@ -504,7 +523,8 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
     }
 
     function callVCS() {
-      fetch('/api/call?target=sip:101@127.0.0.1:5060', { method: 'POST' });
+      const target = encodeURIComponent('{{.VCSSIPURI}}');
+      fetch('/api/call?target=' + target, { method: 'POST' });
     }
 
     // Polling Snapshot for Live Status Updates
