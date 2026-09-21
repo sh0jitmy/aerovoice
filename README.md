@@ -254,9 +254,8 @@ Makefile に定義されている以下のコマンドを使用して開発を�
 | `make demo-vcs` | VCS 管制卓 & GRS 局インタラクティブ 2 画面デモの起動 |
 | `make sqlite-e2e` | Docker 不要の超高速 SQLite E2E テストの実行 |
 | `make frontend-e2e` | スタンドアロン HTMX フロントエンド E2E テスト & スナップショット生成 |
-| `make docker-e2e` | Docker Compose フルスタック E2E テスト & Grafana 検証 |
 | `make ssg-build` | Go テンプレートからの静的サイト事前レンダリング出力 (SSG) |
-| `make demo` | フルスタック・インタラクティブデモの起動 |
+| `make demo` | Aerovoice VCS & GRS インタラクティブ 2 画面デモの起動 |
 | `make test` | データ競合検知 (`-race`) およびカバレッジ測定付き単体テスト |
 | `make fmt` | ソースコードのフォーマットおよびリンターによる自動修正 |
 | `make lint` | `golangci-lint` を使用した静的解析の実行 |

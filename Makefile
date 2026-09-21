@@ -1,6 +1,6 @@
 # Makefile for Go Development & Custom Skills Management
 
-.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build release-check release-snapshot license-check license-add migration-diff clean openapi-lint publish-pr ai-pr run sqlite-e2e frontend-e2e vcs-frontend-e2e docker-e2e ssg-build demo
+.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build release-check release-snapshot license-check license-add migration-diff clean openapi-lint publish-pr ai-pr run sqlite-e2e frontend-e2e vcs-frontend-e2e ssg-build demo
 
 help:
 	@echo "Available commands:"
@@ -17,9 +17,8 @@ help:
 	@echo "    sqlite-e2e       Run fast standalone SQLite E2E test (No-Docker)"
 	@echo "    frontend-e2e     Run standalone HTMX frontend E2E test & snapshot suite"
 	@echo "    vcs-frontend-e2e Run Aerovoice VCS HTMX frontend E2E test & report suite"
-	@echo "    docker-e2e       Run full-stack Docker Compose E2E test & Grafana assertions"
 	@echo "    ssg-build        Generate pre-rendered static site HTML and assets (SSG)"
-	@echo "    demo             Launch full-stack interactive demo with seeded data"
+	@echo "    demo             Launch Aerovoice VCS interactive 2-screen demo"
 	@echo "    release-check    Validate GoReleaser configuration"
 	@echo "    release-snapshot Run GoReleaser snapshot build"
 	@echo "    license-check    Verify license & author headers in Go files"
@@ -136,18 +135,12 @@ vcs-frontend-e2e: vcs-build grs-build
 	@echo "==> Running Aerovoice VCS HTMX Frontend E2E test suite..."
 	@bash scripts/vcs_frontend_e2e.sh
 
-docker-e2e:
-	@echo "==> Running Full-Stack Docker Compose E2E tests..."
-	@bash scripts/docker_e2e.sh
-
 ssg-build:
 	@echo "==> Generating static site export (SSG)..."
 	@mkdir -p dist/static-site
 	@go run ./cmd/web --ssg-export dist/static-site
 
-demo:
-	@echo "==> Starting Full-Stack Live Demo..."
-	@bash scripts/demo.sh
+demo: demo-vcs
 
 release-check:
 	@echo "==> Validating GoReleaser configuration..."

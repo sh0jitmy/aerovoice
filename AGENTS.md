@@ -7,8 +7,8 @@ This document provides behavioral constraints, architectural conventions, and ex
 `go_template` is an enterprise-grade Go repository template providing:
 1. **Zero-npm Standalone HTMX Dashboard & SSG**: High-performance UI server (`internal/web`) using `//go:embed`, local HTMX (`static/js/htmx.min.js`), and pre-rendered static site export.
 2. **SQLite Governance & Reliability**: CGO-free WAL-mode persistence, SHA-256 verified backup archives (`tar.gz`), atomic transactional restore, and retention cleaner.
-3. **Multi-Tier E2E Testing Framework**: Fast No-Docker SQLite E2E (`make sqlite-e2e`), Headless Chrome frontend UI assertions (`make frontend-e2e`), and Docker Compose full-stack E2E (`make docker-e2e`).
-4. **Production Observability**: VictoriaMetrics, Prometheus metric endpoint (`/metrics`), pprof (`127.0.0.1:6060`), and pre-provisioned Grafana dashboards (`deploy/grafana/`).
+3. **Multi-Tier E2E Testing Framework**: Fast No-Docker SQLite E2E (`make sqlite-e2e`), Headless Chrome frontend UI assertions (`make frontend-e2e`), and Aerovoice VCS frontend E2E (`make vcs-frontend-e2e`).
+4. **Production Observability**: Prometheus metric endpoint (`/metrics`), pprof (`127.0.0.1:6060`), and live signal monitoring.
 5. **SSOT Version Management**: Version centrally defined in `internal/version/version.go`, Go version unified across GitHub Actions and `go.mod` via `go-version-file: 'go.mod'`, release automation via GoReleaser v2.
 
 ---
@@ -50,11 +50,12 @@ make fmt
 make lint
 
 # Verification & Multi-Tier E2E
-make test            # Unit tests with -race and coverage check
-make sqlite-e2e      # Ultra-fast No-Docker SQLite E2E
-make frontend-e2e    # Headless Chrome HTMX UI & snapshot verification
-make docker-e2e      # Multi-container Docker Compose E2E
-make ssg-build       # Static site generation export
+make test               # Unit tests with -race and coverage check
+make sqlite-e2e         # Ultra-fast No-Docker SQLite E2E
+make frontend-e2e       # Headless Chrome HTMX UI & snapshot verification
+make vcs-frontend-e2e   # Aerovoice VCS HTMX UI & report verification
+make aerovoice-test     # Aerovoice ED-137 protocol test suite
+make ssg-build          # Static site generation export
 
 # Release & Governance
 make release-check   # Validate GoReleaser v2 configuration

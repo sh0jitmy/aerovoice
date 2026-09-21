@@ -32,8 +32,8 @@
 - [x] **R-3.2 静的サイト事前レンダリング出力 (SSG)**: 同一の Go テンプレートから静的 HTML とアセットを事前生成する `ExportStaticSite` / `make ssg-build` が実装されていること。
 - [x] **R-3.3 改変検知付き SQLite バックアップ＆アトミックリストア**: SHA-256 チェックサム付きマニフェストによるバックアップアーカイブ（`tar.gz`）の作成、破損検知、アトミックなトランザクション復元が実装され、E2Eテストで検証されていること。
 - [x] **R-3.4 データ保持期間自動パージ (Retention Cleaner)**: 保持期間を超過した古いバックアップファイルおよび時系列レコードを自動パージする機能が実装され、API およびテストで検証されていること。
-- [x] **R-3.5 多層 E2E テストフレームワーク**: `make sqlite-e2e`（No-Docker高速E2E）、`make frontend-e2e`（Headless Chrome UI検証＆スナップショット＆HTMLレポート）、`make docker-e2e`（Dockerフルスタック＆Grafana検証）の多層テストが整備されていること。
-- [x] **R-3.6 統合可観測性スタック (VictoriaMetrics + Grafana)**: Docker Compose 環境下で VictoriaMetrics による軽量スクレイピングと Grafana ダッシュボード自動プロビジョニングが整備されていること。
+- [x] **R-3.5 多層 E2E テストフレームワーク**: `make sqlite-e2e`（No-Docker高速E2E）、`make frontend-e2e`（Headless Chrome UI検証＆スナップショット＆HTMLレポート）、`make vcs-frontend-e2e`（Aerovoice VCS HTMX UI検証＆HTMLレポート）、`make aerovoice-test`（ED-137 E2E）の多層テストが整備されていること。
+- [x] **R-3.6 統合可観測性スタック (Prometheus + Metrics API)**: OTel Metrics API によるリクエスト数・遅延計装と `/metrics` エンドポイント、リアルタイム音声スペクトラム解析・ジッタ監視が整備されていること。
 - [x] **R-3.7 AI カスタムスキル体系の整備 (Claude & Antigravity 両対応)**: 26種類の専門スキルが `.claude/skills/` および `.agents/skills/` に配備され、`make check` により構文検証をパスすること。
 - [x] **R-3.8 リリース管理＆Go バージョン SSOT**: `go-version-file: 'go.mod'` により Go バージョンを `go.mod` に一元管理し、`internal/version/version.go` から GoReleaser v2 `-ldflags` によるメタデータ埋め込みが実装されていること。
 

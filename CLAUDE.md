@@ -27,8 +27,8 @@
 ### 多層 E2E テスト
 - **No-Docker SQLite E2E**: `make sqlite-e2e`
 - **スタンドアロン HTMX フロントエンド E2E**: `make frontend-e2e`
-- **Docker Compose フルスタック E2E**: `make docker-e2e`
-- **フルスタックライブデモ**: `make demo`
+- **Aerovoice VCS HTMX フロントエンド E2E**: `make vcs-frontend-e2e`
+- **Aerovoice 2画面ライブデモ**: `make demo` (または `make demo-vcs`)
 
 ### 品質・スキル管理タスク
 - **カスタムスキルのインストール**: `make install-all` (Claude & Antigravity)

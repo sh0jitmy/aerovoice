@@ -99,11 +99,11 @@ graph TD
 - **保持期間クリーナー (`PurgeExpiredRecords`)**:
   - 指定保持日数（`retentionDays`）を超過した古いバックアップファイルおよび時系列レコードを自動パージ。
 
-### 2.4 オブザーバビリティスタック (`deploy/`)
-- **VictoriaMetrics & Prometheus**:
-  - OpenTelemetry メトリクスおよび標準 Go ランタイムメトリクスを 5 秒間隔で収集。
-- **Grafana 自動プロビジョニング**:
-  - データソース (`deploy/grafana/datasources.yaml`) とダッシュボード (`deploy/grafana/dashboards/overview.json`) をマウントするだけで即時起動。
+### 2.4 オブザーバビリティ & テレメトリ
+- **OpenTelemetry & Prometheus Exporter**:
+  - OpenTelemetry メトリクスおよび標準 Go ランタイムメトリクスを `/metrics` エンドポイントから低カーディナリティで提供。
+- **ED-137 リアルタイム信号監視**:
+  - VCS Web コンソールでの FFT 音声スペクトラム（0〜4kHz）描画、ジッタ（RTT/Delay）測定、Supervision 死活監視をリアルタイム提供。
 
 ---
 
@@ -121,7 +121,7 @@ graph LR
         L3["HTMX Frontend E2E<br/><code>make frontend-e2e</code><br/>- Headless Chrome Snapshot<br/>- HTMX Swaps & Cards<br/>- HTML Report Generated"]
     end
     subgraph "Layer 4"
-        L4["Docker Compose E2E<br/><code>make docker-e2e</code><br/>- Multi-container Stack<br/>- PostgreSQL + VictoriaMetrics<br/>- Grafana UI & Metric Assertions"]
+        L4["Aerovoice VCS E2E<br/><code>make vcs-frontend-e2e</code><br/>- ED-137 Radio & Phone E2E<br/>- 2-Screen Live Verification<br/>- Audio & PCAP Analyzer"]
     end
     
     L1 --> L2 --> L3 --> L4
