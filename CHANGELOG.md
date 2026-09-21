@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.3](https://github.com/sh0jitmy/aerovoice/compare/v0.0.2...v0.0.3) - 2026-09-21
+
+- feat: add windows build commands and fix goreleaser v2 configuration for aerovoice by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/13
+
 ## [v0.0.2](https://github.com/sh0jitmy/aerovoice/compare/v0.0.1...v0.0.2) - 2026-09-21
 
 - chore: prune docker, ent orm, and legacy template assets for aerovoice by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/10
