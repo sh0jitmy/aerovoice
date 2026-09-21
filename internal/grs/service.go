@@ -177,6 +177,12 @@ func (s *Service) SetAudioSource(src string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.audioSource = src
+	if s.voicePlayer != nil {
+		s.voicePlayer.Reset()
+	}
+	if s.telephonyPlayer != nil {
+		s.telephonyPlayer.Reset()
+	}
 	s.logEvent("SYS", "INT", "INFO", fmt.Sprintf("Audio source changed to %s", src))
 }
 

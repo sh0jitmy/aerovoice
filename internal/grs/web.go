@@ -463,8 +463,10 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
           audioBuffer.copyToChannel(float32Array, 0);
 
           const now = audioCtx.currentTime;
-          if (nextPlayTime < now) {
-            nextPlayTime = now + 0.025; // 25ms small jitter buffer
+          const targetBuffer = 0.020; // 20ms target jitter buffer
+          const maxBuffer = 0.050;    // 50ms maximum buffer cap (strict real-time constraint)
+          if (nextPlayTime < now || nextPlayTime > now + maxBuffer) {
+            nextPlayTime = now + targetBuffer;
           }
           const src = audioCtx.createBufferSource();
           src.buffer = audioBuffer;

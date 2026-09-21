@@ -959,10 +959,14 @@ function handleBinaryAudio(arrayBuffer) {
     const audioBuf = audioCtx.createBuffer(1, float32Array.length, 8000);
     audioBuf.copyToChannel(float32Array, 0);
 
-    // Seamless scheduling to eliminate packet jitter & overlap distortion
+    // Low-Latency Adaptive Scheduling with Strict Max Latency Cap (<= 50ms)
     const now = audioCtx.currentTime;
-    if (nextPlayTime < now) {
-        nextPlayTime = now + 0.025; // 25ms small jitter buffer
+    const targetBuffer = 0.020; // 20ms target jitter buffer
+    const maxBuffer = 0.050;    // 50ms maximum buffer cap (strict real-time constraint)
+
+    if (nextPlayTime < now || nextPlayTime > now + maxBuffer) {
+        // Fast-forward / re-sync when buffer starves or latency accumulates
+        nextPlayTime = now + targetBuffer;
     }
 
     // Playback
