@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/aerovoice/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

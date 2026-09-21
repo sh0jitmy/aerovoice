@@ -24,12 +24,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/shjtmy/aerovoice/internal/channel"
-	"github.com/shjtmy/aerovoice/internal/config"
-	"github.com/shjtmy/aerovoice/internal/ed137"
-	"github.com/shjtmy/aerovoice/internal/media"
-	"github.com/shjtmy/aerovoice/internal/media/codec"
-	"github.com/shjtmy/aerovoice/internal/sip"
+	"github.com/sh0jitmy/aerovoice/internal/channel"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/media"
+	"github.com/sh0jitmy/aerovoice/internal/media/codec"
+	"github.com/sh0jitmy/aerovoice/internal/sip"
 )
 
 // AudioBroadcaster sends real-time audio samples and events to attached UI clients.

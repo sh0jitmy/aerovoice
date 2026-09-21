@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/aerovoice/internal/config"
-	"github.com/shjtmy/aerovoice/internal/ed137"
-	"github.com/shjtmy/aerovoice/internal/grs"
-	"github.com/shjtmy/aerovoice/internal/media"
-	"github.com/shjtmy/aerovoice/internal/vcs"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/grs"
+	"github.com/sh0jitmy/aerovoice/internal/media"
+	"github.com/sh0jitmy/aerovoice/internal/vcs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

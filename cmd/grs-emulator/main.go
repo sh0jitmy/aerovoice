@@ -24,9 +24,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/shjtmy/aerovoice/internal/config"
-	"github.com/shjtmy/aerovoice/internal/grs"
-	"github.com/shjtmy/aerovoice/internal/version"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/grs"
+	"github.com/sh0jitmy/aerovoice/internal/version"
 )
 
 func main() {

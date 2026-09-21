@@ -15,9 +15,9 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/shjtmy/aerovoice/internal/version.Version={{.Version}}
-      - -X github.com/shjtmy/aerovoice/internal/version.Commit={{.Commit}}
-      - -X github.com/shjtmy/aerovoice/internal/version.Date={{.Date}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Version={{.Version}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Commit={{.Commit}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Date={{.Date}}
     goos:
       - linux
       - darwin
@@ -35,9 +35,9 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/shjtmy/aerovoice/internal/version.Version={{.Version}}
-      - -X github.com/shjtmy/aerovoice/internal/version.Commit={{.Commit}}
-      - -X github.com/shjtmy/aerovoice/internal/version.Date={{.Date}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Version={{.Version}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Commit={{.Commit}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Date={{.Date}}
     goos:
       - linux
       - darwin

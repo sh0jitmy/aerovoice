@@ -33,9 +33,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/shjtmy/aerovoice/internal/ed137"
-	"github.com/shjtmy/aerovoice/internal/media"
-	"github.com/shjtmy/aerovoice/internal/pcap"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/media"
+	"github.com/sh0jitmy/aerovoice/internal/pcap"
 )
 
 var upgrader = websocket.Upgrader{

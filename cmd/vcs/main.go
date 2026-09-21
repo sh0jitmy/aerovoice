@@ -25,10 +25,10 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/shjtmy/aerovoice/internal/config"
-	"github.com/shjtmy/aerovoice/internal/media"
-	"github.com/shjtmy/aerovoice/internal/vcs"
-	"github.com/shjtmy/aerovoice/internal/version"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/media"
+	"github.com/sh0jitmy/aerovoice/internal/vcs"
+	"github.com/sh0jitmy/aerovoice/internal/version"
 )
 
 func main() {

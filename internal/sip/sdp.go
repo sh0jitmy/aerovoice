@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/pion/sdp/v3"
-	"github.com/shjtmy/aerovoice/internal/media/codec"
+	"github.com/sh0jitmy/aerovoice/internal/media/codec"
 )
 
 // SDPMediaInfo contains extracted media parameters from SDP.

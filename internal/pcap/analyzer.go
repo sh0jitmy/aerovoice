@@ -28,9 +28,9 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
 	"github.com/pion/rtp/v2"
-	"github.com/shjtmy/aerovoice/internal/ed137"
-	"github.com/shjtmy/aerovoice/internal/media"
-	"github.com/shjtmy/aerovoice/internal/media/codec"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/media"
+	"github.com/sh0jitmy/aerovoice/internal/media/codec"
 )
 
 // PacketDetail represents a single dissected packet for display in Wireshark-like table.

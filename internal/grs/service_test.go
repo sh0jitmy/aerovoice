@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/aerovoice/internal/config"
-	"github.com/shjtmy/aerovoice/internal/sip"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/sip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

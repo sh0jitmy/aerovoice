@@ -9,7 +9,7 @@ metadata:
   version: "1.0.0"
   openclaw:
     emoji: "🔬"
-    homepage: https://github.com/shjtmy/aerovoice
+    homepage: https://github.com/sh0jitmy/aerovoice
     requires:
       bins:
         - go

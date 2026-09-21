@@ -25,11 +25,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shjtmy/aerovoice/internal/config"
-	"github.com/shjtmy/aerovoice/internal/ed137"
-	"github.com/shjtmy/aerovoice/internal/media"
-	"github.com/shjtmy/aerovoice/internal/media/codec"
-	"github.com/shjtmy/aerovoice/internal/sip"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/media"
+	"github.com/sh0jitmy/aerovoice/internal/media/codec"
+	"github.com/sh0jitmy/aerovoice/internal/sip"
 )
 
 // LogEntry represents an event message in GRS.
