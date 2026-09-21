@@ -32,8 +32,8 @@ This document provides behavioral constraints, architectural conventions, and ex
 6. **Requirements Compliance**:
    - After updating features or configurations, execute `make self-eval` and ensure 100% compliance in `REQUIREMENTS.md`.
 7. **Documentation Synchronization (README & Manual Governance)**:
-   - When modifying UI elements, configuration files (`configs/*.yaml`, env variables), CLI flags, communication protocols, or test assets, the agent MUST immediately review and update `README.md` and user manuals (`docs/manual.md`).
-   - Adhere to `documentation-governance` skill to prevent documentation decay and guarantee 100% consistency between active runtime code and guides.
+   - Whenever **user experience (UX)** changes — such as UI interaction flows, audio/visual perceptions, configuration procedures (`configs/*.yaml`, env variables), or troubleshooting behaviors — the agent MUST immediately review and update `README.md` and user manuals (`docs/manual.md`).
+   - Adhere to `documentation-governance` skill to eliminate cognitive friction and guarantee 100% consistency between active runtime behavior and user documentation.
 
 ---
 
