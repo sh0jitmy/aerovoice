@@ -153,6 +153,7 @@ flowchart TB
 | **SIP** | `5060/udp` | `5070/udp` | `sip_port` | RFC 3261 / ED-137C Vol 1&2（呼制御 INVITE/200 OK/BYE、死活監視 OPTIONS） |
 | **RTP** | `10000~/udp` | `20000~/udp` | `rtp_port_start`, `rtp_host` | RFC 3550 / ED-137C Vol 1（G.711 A-law/μ-law + Header Extension `0x0167`） |
 | **HTTP/WS** | `8082/tcp` | `8081/tcp` | `http_port` | 管制卓 Web UI / 無線局テストベンチ UI、リアルタイム WebSocket 音声 |
+| **VCS 録音管理** | デフォルト100件 / 5分 | - | `recording.max_recordings`, `recording.max_duration_seconds` | ED-137 Vol 4 録音保持管理（FIFO自動ローテーション、ストレージ最大約480MBに制御） |
 
 ### 🎮 5分で体験するクイック手順
 
@@ -172,6 +173,7 @@ flowchart TB
    - 日本語品質確認アナウンスによる全二重通話とジッタ測定が実行されます。
 5. **録音を聞く (Recordings)**:
    - 「Recordings」タブで交信音声（WAV）をブラウザ上で即座に再生・ダウンロード可能。
+   - デフォルト最大 100 件（1件最大5分 / FIFO 自動ローテーション）で自動管理され、ストレージ容量を約 480 MB 以下に安全に抑えます。
 
 ### 2. 個別起動
 ```bash

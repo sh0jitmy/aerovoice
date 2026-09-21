@@ -44,3 +44,9 @@ telephony:
     - id: "da-echo-test"
       name: "Echo Loopback Test"
       target_sip_uri: "sip:echo-test@127.0.0.1:5070"
+
+recording:
+  # Maximum number of stored recordings (default: 100 files, hard limit: 1000)
+  max_recordings: 100
+  # Maximum recording duration in seconds per session (default: 300s / 5min, hard limit: 1800s / 30min)
+  max_duration_seconds: 300

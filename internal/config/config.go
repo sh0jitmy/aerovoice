@@ -30,6 +30,7 @@ type VCSConfig struct {
 	VCS       VCSCoreConfig   `yaml:"vcs"`
 	Channels  []ChannelConfig `yaml:"channels"`
 	Telephony TelephonyConfig `yaml:"telephony"`
+	Recording RecordingConfig `yaml:"recording"`
 
 	mu sync.RWMutex
 }
@@ -67,6 +68,12 @@ type DirectAccessConfig struct {
 	ID           string `yaml:"id" json:"id"`
 	Name         string `yaml:"name" json:"name"`
 	TargetSIPURI string `yaml:"target_sip_uri" json:"target_sip_uri"`
+}
+
+// RecordingConfig represents limits and retention governance for audio recordings.
+type RecordingConfig struct {
+	MaxRecordings      int `yaml:"max_recordings" json:"max_recordings"`
+	MaxDurationSeconds int `yaml:"max_duration_seconds" json:"max_duration_seconds"`
 }
 
 // GRSConfig represents configuration for the GRS emulator.
@@ -147,6 +154,22 @@ func LoadVCSConfig(path string) (*VCSConfig, error) {
 	}
 	if cfg.VCS.DefaultJitterBufferMs == 0 {
 		cfg.VCS.DefaultJitterBufferMs = 40
+	}
+
+	// Recording limits & governance (Defaults: 100 recordings, 300s/5min; Hard limits: 1000 recordings, 1800s/30min)
+	cfg.Recording.MaxRecordings = getEnvInt("AEROVOICE_VCS_REC_MAX_RECORDINGS", cfg.Recording.MaxRecordings)
+	cfg.Recording.MaxDurationSeconds = getEnvInt("AEROVOICE_VCS_REC_MAX_DURATION_SECONDS", cfg.Recording.MaxDurationSeconds)
+
+	if cfg.Recording.MaxRecordings <= 0 {
+		cfg.Recording.MaxRecordings = 100
+	} else if cfg.Recording.MaxRecordings > 1000 {
+		cfg.Recording.MaxRecordings = 1000
+	}
+
+	if cfg.Recording.MaxDurationSeconds <= 0 {
+		cfg.Recording.MaxDurationSeconds = 300 // 5 minutes
+	} else if cfg.Recording.MaxDurationSeconds > 1800 {
+		cfg.Recording.MaxDurationSeconds = 1800 // 30 minutes
 	}
 
 	return &cfg, nil
@@ -237,4 +260,11 @@ func (c *VCSConfig) GetTelephony() TelephonyConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Telephony
+}
+
+// GetRecording returns a copy of the recording configuration.
+func (c *VCSConfig) GetRecording() RecordingConfig {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.Recording
 }

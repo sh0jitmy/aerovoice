@@ -57,7 +57,11 @@ func main() {
 	}
 
 	cleanRecDir := filepath.Clean(*recDir)
-	recorder, err := media.NewRecorder(cleanRecDir)
+	recorder, err := media.NewRecorderWithConfig(media.RecorderConfig{
+		OutputDir:          cleanRecDir,
+		MaxRecordings:      cfg.Recording.MaxRecordings,
+		MaxDurationSeconds: cfg.Recording.MaxDurationSeconds,
+	})
 	if err != nil {
 		slog.Error("Failed to initialize audio recorder", "path", cleanRecDir, "error", err)
 		os.Exit(1)
