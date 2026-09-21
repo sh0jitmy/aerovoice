@@ -34,6 +34,10 @@ This document provides behavioral constraints, architectural conventions, and ex
 7. **Documentation Synchronization (README & Manual Governance)**:
    - Whenever **user experience (UX)** changes — such as UI interaction flows, audio/visual perceptions, configuration procedures (`configs/*.yaml`, env variables), or troubleshooting behaviors — the agent MUST immediately review and update `README.md` and user manuals (`docs/manual.md`).
    - Adhere to `documentation-governance` skill to eliminate cognitive friction and guarantee 100% consistency between active runtime behavior and user documentation.
+8. **Verified Signatures Required for Git Commits**:
+   - Every Git commit must be signed with a verified signature (`commit.gpgsign=true` or `-S`) to earn the GitHub "Verified" badge and satisfy branch protection rules.
+   - **Never bypass commit signing with `--no-gpg-sign`**.
+   - If an SSH or GPG signing key requires an interactive passphrase that is unavailable in non-interactive agent execution, prompt the user to load the key into `ssh-agent` or commit via an interactive terminal rather than committing without signatures.
 
 ---
 
