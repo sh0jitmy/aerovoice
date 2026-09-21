@@ -183,38 +183,63 @@ def test_vcs_frontend():
         "status": "PASS"
     })
 
-    # Step 7: Headless Chrome Snapshot
+    # Step 7: Headless Chrome Snapshots for all VCS tabs and GRS Console
     screenshot_b64 = ""
+    screenshots = {}
     if CHROME_BIN:
-        log(f"Step 7: Capturing Headless Chrome snapshot with {CHROME_BIN}...")
-        try:
-            cmd = [
-                CHROME_BIN,
-                "--headless=new",
-                "--disable-gpu",
-                "--no-sandbox",
-                "--hide-scrollbars",
-                "--window-size=1440,900",
-                f"--screenshot={DASHBOARD_SCREENSHOT_PATH}",
-                f"{VCS_URL}/",
-            ]
-            subprocess.run(cmd, check=True, timeout=15)
-            log(f"✅ Dashboard snapshot saved to {DASHBOARD_SCREENSHOT_PATH}")
-            if os.path.exists(DASHBOARD_SCREENSHOT_PATH):
-                with open(DASHBOARD_SCREENSHOT_PATH, "rb") as f:
-                    screenshot_b64 = base64.b64encode(f.read()).decode("utf-8")
-        except Exception as e:
-            log(f"⚠️ Chrome snapshot capture failed or timed out: {e}", "WARN")
+        log(f"Step 7: Capturing Headless Chrome snapshots for all VCS tabs & GRS with {CHROME_BIN}...")
+        targets = [
+            ("VCS Main Dashboard", f"{VCS_URL}/", DASHBOARD_SCREENSHOT_PATH),
+            ("VCS Radio Console", f"{VCS_URL}/?tab=radio", os.path.join(DOCS_IMG_DIR, "vcs_tab_radio.png")),
+            ("VCS Telephony DA", f"{VCS_URL}/?tab=telephony", os.path.join(DOCS_IMG_DIR, "vcs_tab_telephony.png")),
+            ("VCS Recordings", f"{VCS_URL}/?tab=recordings", os.path.join(DOCS_IMG_DIR, "vcs_tab_recordings.png")),
+            ("VCS Supervision", f"{VCS_URL}/?tab=supervision", os.path.join(DOCS_IMG_DIR, "vcs_tab_supervision.png")),
+            ("VCS PCAP Analyzer", f"{VCS_URL}/?tab=pcap", os.path.join(DOCS_IMG_DIR, "vcs_tab_pcap.png")),
+            ("VCS Comm Logs", f"{VCS_URL}/?tab=logs", os.path.join(DOCS_IMG_DIR, "vcs_tab_logs.png")),
+            ("GRS Main Dashboard", f"{GRS_URL}/", os.path.join(DOCS_IMG_DIR, "grs_dashboard.png")),
+            ("GRS Radio Transceiver", f"{GRS_URL}/?tab=radio", os.path.join(DOCS_IMG_DIR, "grs_tab_radio.png")),
+            ("GRS Telephony Test", f"{GRS_URL}/?tab=telephony", os.path.join(DOCS_IMG_DIR, "grs_tab_telephony.png")),
+            ("GRS Supervision & Faults", f"{GRS_URL}/?tab=supervision", os.path.join(DOCS_IMG_DIR, "grs_tab_supervision.png")),
+            ("GRS Protocol Logs", f"{GRS_URL}/?tab=logs", os.path.join(DOCS_IMG_DIR, "grs_tab_logs.png")),
+        ]
+        for label, url, dest in targets:
+            try:
+                cmd = [
+                    CHROME_BIN,
+                    "--headless=new",
+                    "--disable-gpu",
+                    "--no-sandbox",
+                    "--hide-scrollbars",
+                    "--window-size=1440,900",
+                    f"--screenshot={dest}",
+                    url,
+                ]
+                subprocess.run(cmd, check=True, timeout=25, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                size_kb = os.path.getsize(dest) // 1024
+                log(f"  ✅ {label:25} -> {dest} ({size_kb} KB)")
+                if os.path.exists(dest):
+                    with open(dest, "rb") as f:
+                        b64 = base64.b64encode(f.read()).decode("utf-8")
+                        screenshots[label] = b64
+                        if dest == DASHBOARD_SCREENSHOT_PATH:
+                            screenshot_b64 = b64
+            except Exception as e:
+                log(f"  ⚠️ {label:25} snapshot capture failed: {e}", "WARN")
     else:
         log("⚠️ No Chrome executable found in system PATH. Skipping snapshot capture.", "WARN")
 
     # Step 8: Generate Standalone HTML Test Report
     log(f"Step 8: Generating Visual HTML E2E Test Report at {HTML_REPORT_PATH}...")
-    generate_html_report(verification_results, screenshot_b64)
+    generate_html_report(verification_results, screenshot_b64, screenshots)
     log(f"✅ Visual HTML report successfully created: {HTML_REPORT_PATH}")
 
 
-def generate_html_report(results, screenshot_b64=""):
+def generate_html_report(results, screenshot_b64="", screenshots=None):
+    if screenshots is None:
+        screenshots = {}
+        if screenshot_b64:
+            screenshots["VCS Main Dashboard"] = screenshot_b64
+
     total = len(results)
     passed = sum(1 for r in results if r["status"] == "PASS")
     failed = total - passed
@@ -232,13 +257,23 @@ def generate_html_report(results, screenshot_b64=""):
         </tr>
         """
 
-    img_html = ""
-    if screenshot_b64:
-        img_html = f"""
+    gallery_html = ""
+    if screenshots:
+        cards = ""
+        for label, b64 in screenshots.items():
+            cards += f"""
+            <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; overflow: hidden; margin-bottom: 1.5rem;">
+                <div style="padding: 0.75rem 1rem; background: #0f172a; border-bottom: 1px solid #334155; font-weight: 600; color: #38bdf8;">
+                    📸 {label}
+                </div>
+                <img src="data:image/png;base64,{b64}" alt="{label}" style="width: 100%; display: block;">
+            </div>
+            """
+        gallery_html = f"""
         <div class="card" style="margin-top: 1.5rem;">
-            <h3>📸 Headless Chrome UI Snapshot</h3>
-            <div style="border: 1px solid #334155; border-radius: 8px; overflow: hidden; margin-top: 0.75rem;">
-                <img src="data:image/png;base64,{screenshot_b64}" alt="VCS Dashboard Snapshot" style="width: 100%; display: block;">
+            <h3>📸 Multi-Tab Headless Chrome Snapshots ({len(screenshots)} Screens Captured)</h3>
+            <div style="margin-top: 1rem;">
+                {cards}
             </div>
         </div>
         """
@@ -405,7 +440,7 @@ def generate_html_report(results, screenshot_b64=""):
             </table>
         </div>
 
-        {img_html}
+        {gallery_html}
     </div>
 </body>
 </html>

@@ -333,15 +333,19 @@ VCS コンソールは、Node.js や npm などの外部ランタイムに一切
 
 #### ① ヘッダー制御部
 - **タイトル & バージョン表示**: 現在稼働中の Aerovoice VCS バージョン（`internal/version` と連動）を表示。
+- **操作マニュアルリンク**: 本マニュアル（`docs/manual.md`）へのダイレクトリンク。
 - **🔊 Audio ON / 🔇 Audio OFF 切替トグル**:
   - ブラウザの Web Audio API（AudioContext）を物理制御します。
   - **Audio ON**: マイク入力の集音および受信パケットのスピーカー再生を有効化。
   - **Audio OFF**: Web Audio ハードウェアを完全に破棄・解放し、マイク入力トラックを物理停止。暗騒音やノイズの漏れを電気的・物理的に 100% 遮断（完全 disable）。
 
-#### ② 各タブ画面の詳細説明
+#### ② VCS 各タブ画面の詳細説明
 
 ##### 1. 📻 Radio Console タブ (無線チャンネル卓)
 航空無線周波数（`118.100 MHz TWR Main`, `120.500 MHz APP Backup` 等）の接続・通話卓です。
+
+![VCS Radio Console Tab](docs/images/vcs_tab_radio.png)
+
 - **Connect to GRS ボタン**: 対象周波数の対向 GRS 基地局と SIP INVITE/200 OK ハンドシェイクを実行し、RTP 送受信セッションを確立します。
 - **PUSH TO TALK (PTT) ボタン**: 航空機への送信スイッチ。長押しで PTT=1 の音声パケットを送信（キーボードのスペースキー長押しでも操作可能）。マイク未接続時は日本語テスト音声を自動送出します。
 - **🗣️ Send ATC Voice (Speech TX) ボタン**: クリックするだけで、航空無線のリアルなプロフェッショナル速度で発話された日本語テスト音声（「テスト、テスト。本日は晴天なり、本日は晴天なり...」）を約8.5秒間自動送話し、終了後に自動解除します。
@@ -352,6 +356,9 @@ VCS コンソールは、Node.js や npm などの外部ランタイムに一切
 
 ##### 2. 📞 Telephony DA タブ (ダイレクトアクセス電話)
 管制卓間や関連部署（Tower、Approach、Radar等）とのワンクリック直通電話（Direct Access / DA）パネルです。
+
+![VCS Telephony DA Tab](docs/images/vcs_tab_telephony.png)
+
 - **DA 連絡先一覧カード**: 登録された内線番号や対向局に対して、ワンクリックで全二重（Full-Duplex）通話を発信・切断します。
 - **🗣️ Human Speech Test Call**: 日本語音声アナウンスによる電話回線の音質・疎通確認テスト。
 - **🔊 1kHz Tone Test Call**: 1000Hz 純音による回線歪み・遅延測定テスト。
@@ -359,6 +366,9 @@ VCS コンソールは、Node.js や npm などの外部ランタイムに一切
 
 ##### 3. 🎙️ Recordings タブ (録音カタログ・再生)
 ED-137 Volume 4 規格に準拠した交信音声の記録・管理カタログです。
+
+![VCS Recordings Tab](docs/images/vcs_tab_recordings.png)
+
 - **自動ロギング**: PTT 送話、SQU 受信、DA 電話通話が完了するたびに、自動で PCM 8kHz 16-bit WAV ファイルが生成されます。
 - **一覧テーブル**: 録音日時、周波数/対象チャンネル、通話時間、ファイルサイズがリアルタイムに表示されます。
 - **ブラウザ内インライン再生**: 録音一覧の再生ボタンから、ブラウザ上で直接 WAV 音声を再生・視聴できます。
@@ -367,12 +377,19 @@ ED-137 Volume 4 規格に準拠した交信音声の記録・管理カタログ�
 
 ##### 4. 📡 Supervision タブ (ノード常時死活監視)
 ED-137 Volume 5 規格に準拠した地上無線基地局（GRS）の常時死活監視パネルです。
+
+![VCS Supervision Tab](docs/images/vcs_tab_supervision.png)
+
 - **SIP OPTIONS 監視**: 5秒間隔で自動送出される死活監視 Ping に対する応答状態をリアルタイム表示。
-- **RTT（往復遅延）測定**: 基地局とのネットワーク応答時間（例: `0.42ms`）をミリ秒単位で表示。
+- **RTT（往復遅延）測定**: 基地局とのネットワーク応答時間（例: `0.32 ms`, `0.12 ms`）をミリ秒単位で表示。
 - **Online / Offline 視覚表示**: 正常時は緑色バッジ（Online）、通信途絶時（Silent Drop 障害等）は赤色バッジ（Offline）に即座に切り替わります。
+- **監視カウンタ**: チェック総数（Checks）および障害検知数（Fails）を一覧表示。
 
 ##### 5. 🔍 PCAP Analyzer タブ (事後パケット診断)
 Wireshark 等でキャプチャされた `.pcap` / `.pcapng` ファイルの事後解析・音声復元ツールです。
+
+![VCS PCAP Analyzer Tab](docs/images/vcs_tab_pcap.png)
+
 - **ドラッグ＆ドロップ入力**: PCAP ファイルをブラウザ上にドラッグ＆ドロップするだけで解析が始まります。
 - **プロトコル解析指標**: パケット総数、RTP パケット数、平均ジッタ、パケットロス率を算出。
 - **ED-137 タイムライン**: PTT ON/OFF、SQU 状態、SQI（電波品質 0〜100）の推移を時系列で可視化。
@@ -380,7 +397,11 @@ Wireshark 等でキャプチャされた `.pcap` / `.pcapng` ファイルの事�
 
 ##### 6. 📜 Comm Logs タブ (シグナリング & 通信ログ)
 全シグナリングおよびメディア通信イベントのリアルタイムターミナルコンソールです。
+
+![VCS Comm Logs Tab](docs/images/vcs_tab_logs.png)
+
 - **プロトコル色分けバッジ**: `[SIP]`, `[ED-137]`, `[RTP]`, `[SYS]` ごとに視覚的に識別可能。
+- **方向タグ表示**: `[TX]`（送信）、`[RX]`（受信）、`[INT]`（内部イベント）を明確に区分。
 - **フィルタボタン**: All / SIP / ED-137 / RTP / SYS のワンクリック表示切り替え。
 - **Clear Logs ボタン**: 蓄積されたログ表示をリセット。
 
@@ -393,19 +414,62 @@ Wireshark 等でキャプチャされた `.pcap` / `.pcapng` ファイルの事�
 
 ### 4.2 GRS テストベンチ (`http://127.0.0.1:8081`)
 
-空港滑走路脇に設置された無線中継基地局を模擬するテストベンチ UI です。
+![GRS Main Dashboard](docs/images/grs_dashboard.png)
 
-| 画面要素 | 種類 | 説明 |
-| :--- | :--- | :--- |
-| **Speaker: ON / OFF** | ボタン (右上) | VCS から届いた音声を PC スピーカーで再生するかどうかのトグル。 |
-| **PTT Indicator** | 表示 | VCS から PTT 送信が届いているかを表示します。 |
-| **VU Meter** | メーター | VCS から受信した音声レベルをリアルタイムに表示します。 |
-| **Sound Source** | ラジオ選択 | 送出音声ソース（🧑‍✈️ パイロット音声 [日本語・自然速度] / 📞 電話音声 / 1kHz Tone / Beep / 🔁 Loopback Echo）を選択します。<br>※ Loopback Echo は VCS からの受信音声を FIFO キューで保持し、途切れず滑らかに送り返します。 |
-| **Squelch (SQU) Control** | ボタン | 選択された音声ソースを VCS に向けて送出（SQU ON/OFF）します。 |
-| **Jitter Injection** | スライダー | VCS へ送出する RTP に人工的なジッタ（0〜100ms）を注入します。 |
-| **Packet Loss** | スライダー | 人工的なパケット破棄（0〜50%）を発生させ、耐障害性をテストします。 |
-| **Silent Drop** | スイッチ | SIP OPTIONS への応答を停止し、Supervision の回線断検知をテストします。 |
-| **GRS Protocol & Event Log** | コンソール | GRS 局が送受信した全通信イベント（SIP, ED-137, RTP）をリアルタイムに記録・表示します。 |
+空港滑走路脇に設置された無線中継基地局を模擬するテストベンチ UI です。
+VCS コンソールと同様にタブナビゲーション（`?tab=radio`, `?tab=telephony`, `?tab=supervision`, `?tab=logs`）を搭載し、各テスト画面を分離・切り替えて操作できます。
+
+#### GRS 各タブ画面の詳細説明
+
+##### 1. 📻 Radio Transceiver タブ (無線送受信機 & 障害注入)
+VCS との対向無線交信および音声信号生成・人工障害注入を行う中核テストパネルです。
+
+![GRS Radio Transceiver Tab](docs/images/grs_tab_radio.png)
+
+- **📥 Uplink Receiver (VCS からの受信)**:
+  - **PTT Indicator**: VCS 管制卓から届いた PTT 送信状態を赤色パルスでリアルタイム表示。PTT 種別（Normal/Priority）や PTT-ID を表示します。
+  - **Live Speaker Audio Output**: VCS から届いた音声を PC スピーカーで直接再生するかどうかのトグル（🔇 OFF / 🔊 ON）。
+  - **Rx Audio Level**: 受信レベルメーター（dBFS）および動的バー表示。
+  - **Rx 統計**: Rx Jitter（リアルタイムジッタ値）、Peak Jitter、Loss Rate（パケットロス率）、Packets Received（総受信パケット数）を表示。
+- **📤 Downlink Transmitter (VCS への送信)**:
+  - **Squelch (SQU) Control**: 航空機からの受信電波を模擬し、VCS に向けて音声送出を開始（🔘 SQU ON）/ 停止（⚪ SQU OFF）します。
+  - **Audio Signal Generator (送信音声ソース)**:
+    - 🧑‍✈️ **パイロット音声 (日本語)**: 「テスト、テスト。本日は晴天なり、本日は晴天なり。」の落ち着いた自然な日本語無線発話。
+    - 📞 **電話音声 (日本語)**: 電話品質試験用の日本語アナウンス音声。
+    - **1 kHz Sine Tone**: 歪み・減衰試験用 1000Hz 正弦波。
+    - **400 Hz ATC Beep**: 航空管制ビープ音。
+    - **Simulated Speech Formants**: 母音フォルマント模擬音声。
+    - 🔁 **Loopback Echo (VCS Audio)**: VCS から受信した音声を FIFO キューで蓄積し、途切れなく折り返しエコー送信する試験モード。
+  - **⚡ Network Impairment Injection (人工障害注入)**:
+    - **Injected Jitter (0〜50 ms)**: 送信パケットにランダム遅延を注入し、VCS 側のジッタバッファ適応性を検証。
+    - **Injected Loss (0〜30 %)**: 送信パケットを一定確率で破棄し、パケットロス耐性を検証。
+
+##### 2. 📞 Telephony Test タブ (電話呼制御試験)
+VCS 管制卓に対するダイレクトアクセス電話の発信をシミュレートするテストパネルです。
+
+![GRS Telephony Test Tab](docs/images/grs_tab_telephony.png)
+
+- **Auto-Answer Mode**: 1 kHz Tone Responder モードによる自動着信応答ステータス。
+- **📞 Call VCS Station (101) ボタン**: VCS 管制卓（Station 101）に向けて ED-137 SIP INVITE を発信し、内線電話の着信テストを行います。
+
+##### 3. 🩺 Supervision & Fault Simulation タブ (死活監視 & 障害シミュレーション)
+VCS 側からの ED-137 Volume 5 死活監視に対する応答および回線途絶障害の注入パネルです。
+
+![GRS Supervision & Faults Tab](docs/images/grs_tab_supervision.png)
+
+- **SIP OPTIONS Heartbeat**: VCS からの 5秒間隔 OPTIONS Ping に対する 200 OK 応答ステータス。
+- **⚠️ Simulate Silent Drop (Offline) ボタン**:
+  - 有効にすると、GRS は受信した SIP OPTIONS パケットをサイレントに破棄（無応答化）します。
+  - VCS 側が 3回の再送タイムアウト後にノードを `Offline` と判定し、アラートを発報する障害復旧テストが行えます。
+
+##### 4. 📋 Protocol Event Logs タブ (リアルタイムプロトコルログ)
+GRS 局が送受信した全プロトコルイベント（SIP, ED-137, RTP）のリアルタイムコンソールです。
+
+![GRS Protocol Logs Tab](docs/images/grs_tab_logs.png)
+
+- **リアルタイム表示**: SIP OPTIONS Ping/200 OK、INVITE/BYE、RTP 送受信、PTT/SQU イベントをプロトコルバッジ付きで逐次記録。
+- **Auto-scroll 切替**: 新規ログ到達時の自動スクロール有効/無効切替。
+- **Clear Logs ボタン**: コンソールのログ表示をワンクリックでクリア。
 
 ---
 
