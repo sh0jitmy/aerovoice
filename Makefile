@@ -1,6 +1,6 @@
 # Makefile for Go Development & Custom Skills Management
 
-.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build vcs-build grs-build vcs-run grs-run aerovoice-test build-cross vcs-frontend-e2e demo demo-vcs release-check release-snapshot license-check license-add clean publish-pr ai-pr
+.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build vcs-build grs-build vcs-run grs-run aerovoice-test build-windows build-cross vcs-frontend-e2e demo demo-vcs release-check release-snapshot license-check license-add clean publish-pr ai-pr
 
 help:
 	@echo "Available commands:"
@@ -16,6 +16,7 @@ help:
 	@echo "    lint             Run golangci-lint static analysis"
 	@echo "    tidy             Run go mod tidy"
 	@echo "    vulncheck        Run govulncheck vulnerability scanner"
+	@echo "    build-windows    Build Windows (x86_64) binaries (vcs-windows-amd64.exe, grs-windows-amd64.exe)"
 	@echo "    build-cross      Cross-compile Pure-Go binaries for Windows and macOS"
 	@echo "    release-check    Validate GoReleaser configuration"
 	@echo "    release-snapshot Run GoReleaser snapshot build"
@@ -87,6 +88,13 @@ demo-vcs:
 aerovoice-test:
 	@echo "==> Running Aerovoice ED-137 Radio & Telephony Verification Test Suite..."
 	@go test -v ./internal/ed137 ./internal/media/... ./internal/sip ./internal/channel ./internal/pcap ./internal/vcs ./internal/grs ./test/e2e
+
+build-windows:
+	@echo "==> Building Windows (x86_64) binaries (CGO_ENABLED=0 Pure Go)..."
+	@mkdir -p bin/dist
+	@GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/dist/vcs-windows-amd64.exe ./cmd/vcs
+	@GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/dist/grs-windows-amd64.exe ./cmd/grs-emulator
+	@echo "✅ Windows binaries successfully created in bin/dist/ (vcs-windows-amd64.exe, grs-windows-amd64.exe)"
 
 build-cross:
 	@echo "==> Cross-compiling for Windows and macOS (CGO_ENABLED=0 Pure Go)..."

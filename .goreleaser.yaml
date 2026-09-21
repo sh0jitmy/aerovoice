@@ -1,14 +1,14 @@
 version: 2
-project_name: go_sh0jitmy_template
+project_name: aerovoice
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: app
-    binary: app
-    main: ./cmd/app
+  - id: vcs
+    binary: vcs
+    main: ./cmd/vcs
     env:
       - CGO_ENABLED=0
     flags:
@@ -26,9 +26,9 @@ builds:
       - amd64
       - arm64
 
-  - id: web
-    binary: web
-    main: ./cmd/web
+  - id: grs-emulator
+    binary: grs-emulator
+    main: ./cmd/grs-emulator
     env:
       - CGO_ENABLED=0
     flags:

@@ -165,6 +165,42 @@ make demo-vcs
    - **手動切替**: 画面右上の **「🔊 Audio ON / 🔇 Audio OFF」** ボタンをクリックすることで、いつでも手動で ON/OFF を切り替えられます。
    - **完全無効化（Complete Disable）機能**: 「Audio OFF」に切り替えると、Web Audio ハードウェア（AudioContext）が完全に破棄・クローズされ、マイク入力トラックも物理停止します。マイクの暗騒音ループバックやヒスノイズは一切発生せず、完全な無音状態（ノイズゼロ）になります。
 
+### 2.3 Windows 環境でのビルドと個別起動
+
+Windows 環境でも Pure Go（`CGO_ENABLED=0`）のため、一切の外部依存関係なしに動作します。
+
+#### A. ビルド手順
+- **macOS / Linux からクロスコンパイル**:
+  ```bash
+  make build-windows
+  # bin/dist/ 配下に vcs-windows-amd64.exe, grs-windows-amd64.exe が生成されます
+  ```
+- **Windows (PowerShell) で直接ビルド**:
+  ```powershell
+  $env:CGO_ENABLED="0"
+  go build -trimpath -ldflags="-s -w" -o bin\vcs.exe .\cmd\vcs
+  go build -trimpath -ldflags="-s -w" -o bin\grs-emulator.exe .\cmd\grs-emulator
+  ```
+- **Windows (コマンドプロンプト CMD) で直接ビルド**:
+  ```cmd
+  set CGO_ENABLED=0
+  go build -trimpath -ldflags="-s -w" -o bin\vcs.exe .\cmd\vcs
+  go build -trimpath -ldflags="-s -w" -o bin\grs-emulator.exe .\cmd\grs-emulator
+  ```
+
+#### B. 起動手順
+PowerShell または CMD でターミナルを2つ開き、以下を実行します：
+```powershell
+# ターミナル 1 (GRS 地上無線局エミュレータ)
+.\bin\grs-emulator.exe -config configs\grs.yaml
+
+# ターミナル 2 (VCS 管制卓コンソール)
+.\bin\vcs.exe -config configs\vcs.yaml
+```
+
+> [!TIP]
+> 初回起動時に Windows Defender ファイアウォールの通信許可ダイアログが表示された場合は、「プライベートネットワーク」での通信を許可してください（ローカルホスト間の SIP:5060/5070 および RTP:10000/20000 UDP 通信に使用されます）。
+
 ---
 
 ## 3. ステップ・バイ・ステップ操作手順
