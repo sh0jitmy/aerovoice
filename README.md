@@ -248,20 +248,17 @@ Makefile に定義されている以下のコマンドを使用して開発を�
 
 | コマンド | 説明 |
 | :--- | :--- |
-| `make run` | スタンドアロンサーバー（Core API + Web UI）のローカル一括起動 |
-| `make aerovoice-test` | Aerovoice ED-137 無線・電話・HTMX E2E テストスイートの実行 |
+| `make build` | Aerovoice VCS および GRS バイナリ（`bin/vcs`, `bin/grs-emulator`）のビルド |
+| `make vcs-run` | Aerovoice VCS 管制卓コンソールの起動（`http://127.0.0.1:8082`） |
+| `make grs-run` | Aerovoice GRS 地上無線局エミュレータの起動（`http://127.0.0.1:8081`） |
+| `make demo` | VCS 管制卓 & GRS 局インタラクティブ 2 画面デモの起動 |
+| `make test` | データ競合検知 (`-race`) およびコアロジックカバレッジ測定付き単体テスト |
+| `make aerovoice-test` | Aerovoice ED-137 無線・電話プロトコル検証テストスイートの実行 |
 | `make vcs-frontend-e2e` | Aerovoice VCS HTMX フロントエンド E2E テスト & ビジュアルレポート生成 |
-| `make demo-vcs` | VCS 管制卓 & GRS 局インタラクティブ 2 画面デモの起動 |
-| `make sqlite-e2e` | Docker 不要の超高速 SQLite E2E テストの実行 |
-| `make frontend-e2e` | スタンドアロン HTMX フロントエンド E2E テスト & スナップショット生成 |
-| `make docker-e2e` | Docker Compose フルスタック E2E テスト & Grafana 検証 |
-| `make ssg-build` | Go テンプレートからの静的サイト事前レンダリング出力 (SSG) |
-| `make demo` | フルスタック・インタラクティブデモの起動 |
-| `make test` | データ競合検知 (`-race`) およびカバレッジ測定付き単体テスト |
+| `make build-cross` | Windows および macOS 向け Pure Go（`CGO_ENABLED=0`）クロスコンパイル |
 | `make fmt` | ソースコードのフォーマットおよびリンターによる自動修正 |
-| `make lint` | `golangci-lint` を使用した静的解析の実行 |
+| `make lint` | `golangci-lint` を使用した静的解析の実行（Zero-Lint） |
 | `make vulncheck` | `govulncheck` を使用した脆弱性診断の実行 |
-| `make build` | `bin/app` および `bin/web` へのコンパイル |
 | `make release-check` | `GoReleaser v2` 設定ファイルのバリデーション |
 | `make release-snapshot` | `GoReleaser` によるローカルでのスナップショットビルドテスト |
 | `make license-check` | Go ソースコードのライセンス＆作成者ヘッダーの検証 |

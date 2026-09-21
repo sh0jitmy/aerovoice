@@ -1,6 +1,6 @@
 ---
 name: git-strategy
-description: "GitおよびGitHubを用いた開発・コラボレーション戦略。GitHub Flowに基づいたブランチ運用、ブランチ命名規則（feat, fix, refactor, doc, test, chore等）、force pushの禁止、およびGitHub Copilot等のAIアシスタントに対するPRレビューの指示（セキュリティ、パフォーマンス、設計、テスト検証をgolang-design、quality-inspector、sre-deploymentを用いて確認）などを定義・適用します。"
+description: "GitおよびGitHubを用いた開発・コラボレーション戦略。GitHub Flowに基づいたブランチ運用、Verified Signatures（署名付きコミット）の必須化、ブランチ命名規則（feat, fix, refactor, doc, test, chore等）、force pushの禁止、およびGitHub Copilot等のAIアシスタントに対するPRレビューの指示（セキュリティ、パフォーマンス、設計、テスト検証をgolang-design、quality-inspector、sre-deploymentを用いて確認）などを定義・適用します。"
 user-invocable: true
 license: Apache-2.0
 compatibility: Designed for Claude Code, Cursor, OpenCode, OpenClaw, and other AI coding agents.
@@ -35,6 +35,11 @@ metadata:
     - `chore/`: ビルドプロセスやツール等の雑多な変更
 
 ## 2. 履歴管理と変更のコミット規約
+- **Verified Signatures（コミット署名）の厳格遵守**:
+  - GitHub リポジトリのブランチ保護ルールおよびサプライチェーンセキュリティ基準を満たすため、すべてのコミットには**検証可能な署名（Verified Signature）が必須**です。
+  - コミット時に `--no-gpg-sign` オプションを付与して署名をスキップ・無効化することは**一切禁止**とします。
+  - 環境に設定された SSH 署名鍵（`gpg.format=ssh` / `user.signingkey`）または GPG 署名鍵に従い、常に署名付き（`git commit` または `git commit -S`）でコミットを実行し、GitHub 上で "Verified" バッジが付与される状態を担保しなければなりません。
+  - AI エージェント等の非対話的環境でパスフレーズ入力待ち等により署名が中断される場合は、勝手に `--no-gpg-sign` で回避するのではなく、ユーザーに対話的ターミナルでの `ssh-add` による鍵の事前ロード（またはユーザー自身による直接コミット）を依頼してください。
 - **コミットメッセージ（Commit Logs）の言語規則**:
   - 履歴の可読性とグローバルな開発整合性を保つため、コミットメッセージは**英語（English）で記載しなければならない**。日本語での記載は禁止します。
 - **force push の禁止**:
@@ -103,7 +108,7 @@ GitHub上でプルリクエストが作成された際、GitHub Copilot PR Revie
 ## 5. アウトプットの言語統制ルール
 Git戦略に基づいて作成される成果物やドキュメントの言語は以下のルールに従って統一しなければならない。
 
-- **コミットメッセージ（Commit Logs）**:
-  - `## 2` に従い、**英語（English）**で記述する。
-- **PR説明・テンプレート（PR Descriptions & Templates） / Issue / AIによるレビューレポート / GitHub CopilotによるPR指摘コメント**:
+- **コミットメッセージ（Commit Logs）および PR タイトル（PR Titles）**:
+  - `## 2` に従い、**英語（English）**で記述する（例: `feat: ...`, `fix: ...`, `chore: ...`）。
+- **PR本文・説明（PR Descriptions & Templates） / Issue / AIによるレビューレポート / GitHub CopilotによるPR指摘コメント**:
   - メンバー間の迅速な意思疎通と品質統制のため、**完全に日本語（Japanese）で統一して作成・出力しなければならない**。英語表現や他言語の混在はプロセス不適合とみなします。

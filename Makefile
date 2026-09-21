@@ -1,30 +1,26 @@
 # Makefile for Go Development & Custom Skills Management
 
-.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build release-check release-snapshot license-check license-add migration-diff clean openapi-lint publish-pr ai-pr run sqlite-e2e frontend-e2e vcs-frontend-e2e docker-e2e ssg-build demo
+.PHONY: help check install install-agents install-all self-eval generate test fmt lint tidy vulncheck build vcs-build grs-build vcs-run grs-run aerovoice-test build-cross vcs-frontend-e2e demo demo-vcs release-check release-snapshot license-check license-add clean publish-pr ai-pr
 
 help:
 	@echo "Available commands:"
-	@echo "  Go Development & Testing:"
-	@echo "    openapi-lint     Validate OpenAPI spec with Spectral"
-	@echo "    generate         Generate OpenAPI and ent entity code"
+	@echo "  Aerovoice Development & Testing:"
+	@echo "    build            Build Aerovoice VCS and GRS binaries (bin/vcs, bin/grs-emulator)"
+	@echo "    vcs-run          Start Aerovoice VCS Console (http://127.0.0.1:8082)"
+	@echo "    grs-run          Start Aerovoice GRS Emulator (http://127.0.0.1:8081)"
+	@echo "    demo             Launch Aerovoice VCS interactive 2-screen demo"
+	@echo "    test             Run Go tests with race detector and business logic coverage"
+	@echo "    aerovoice-test   Run Aerovoice ED-137 Radio & Telephony verification test suite"
+	@echo "    vcs-frontend-e2e Run Aerovoice VCS HTMX frontend E2E test & report suite"
 	@echo "    fmt              Format Go source files"
 	@echo "    lint             Run golangci-lint static analysis"
 	@echo "    tidy             Run go mod tidy"
 	@echo "    vulncheck        Run govulncheck vulnerability scanner"
-	@echo "    test             Run Go tests with race detector and coverage"
-	@echo "    build            Build binaries to bin/app and bin/web"
-	@echo "    run              Run local standalone stack (Core API + Web Dashboard)"
-	@echo "    sqlite-e2e       Run fast standalone SQLite E2E test (No-Docker)"
-	@echo "    frontend-e2e     Run standalone HTMX frontend E2E test & snapshot suite"
-	@echo "    vcs-frontend-e2e Run Aerovoice VCS HTMX frontend E2E test & report suite"
-	@echo "    docker-e2e       Run full-stack Docker Compose E2E test & Grafana assertions"
-	@echo "    ssg-build        Generate pre-rendered static site HTML and assets (SSG)"
-	@echo "    demo             Launch full-stack interactive demo with seeded data"
+	@echo "    build-cross      Cross-compile Pure-Go binaries for Windows and macOS"
 	@echo "    release-check    Validate GoReleaser configuration"
 	@echo "    release-snapshot Run GoReleaser snapshot build"
 	@echo "    license-check    Verify license & author headers in Go files"
 	@echo "    license-add      Automatically add license headers to Go files"
-	@echo "    migration-diff   Generate DB migration SQL file with Atlas"
 	@echo "    publish-pr       Verify formatting/lints/tests, push to origin, and create GitHub PR"
 	@echo "    ai-pr            Trigger AI agent to draft a GitHub PR in Japanese"
 	@echo "  Custom Skills Management:"
@@ -38,29 +34,18 @@ help:
 
 # --- Go Development ---
 
-openapi-lint:
-	@echo "==> Running Spectral lint on OpenAPI spec..."
-	@if command -v spectral >/dev/null 2>&1; then \
-		NODE_OPTIONS="--no-deprecation" spectral lint api/openapi.yaml; \
-	elif command -v npx >/dev/null 2>&1; then \
-		NODE_OPTIONS="--no-deprecation" npx -y @stoplight/spectral-cli lint api/openapi.yaml; \
-	else \
-		echo "Spectral CLI is not installed and npx is not available. Please install it."; \
-		exit 1; \
-	fi
-
-generate: openapi-lint
-	@echo "==> Generating code from schema..."
+generate:
+	@echo "==> Running code generators..."
 	@go generate ./...
 
-fmt: generate
+fmt:
 	@echo "==> Formatting Go source files..."
 	@go fmt ./...
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run --fix ./...; \
 	fi
 
-lint: generate
+lint:
 	@echo "==> Running golangci-lint..."
 	@golangci-lint run ./...
 
@@ -72,16 +57,10 @@ vulncheck:
 	@echo "==> Running govulncheck..."
 	@go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
-test: generate
+test:
 	@bash scripts/check_coverage.sh
 
-build: generate
-	@echo "==> Building binaries..."
-	@mkdir -p bin
-	@go build -v -o bin/app ./cmd/app
-	@go build -v -o bin/web ./cmd/web
-	@go build -v -o bin/vcs ./cmd/vcs
-	@go build -v -o bin/grs-emulator ./cmd/grs-emulator
+build: vcs-build grs-build
 
 vcs-build:
 	@echo "==> Building Aerovoice VCS Console..."
@@ -120,34 +99,11 @@ build-cross:
 	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/dist/grs-darwin-amd64 ./cmd/grs-emulator
 	@echo "✅ Cross-compilation completed in bin/dist/"
 
-run: build
-	@echo "==> Starting local standalone servers..."
-	@bash scripts/run_local.sh
-
-sqlite-e2e: build
-	@echo "==> Running Standalone SQLite E2E tests..."
-	@bash scripts/sqlite_e2e.sh
-
-frontend-e2e: build
-	@echo "==> Running Standalone HTMX Frontend E2E tests..."
-	@bash scripts/frontend_e2e.sh
-
 vcs-frontend-e2e: vcs-build grs-build
 	@echo "==> Running Aerovoice VCS HTMX Frontend E2E test suite..."
 	@bash scripts/vcs_frontend_e2e.sh
 
-docker-e2e:
-	@echo "==> Running Full-Stack Docker Compose E2E tests..."
-	@bash scripts/docker_e2e.sh
-
-ssg-build:
-	@echo "==> Generating static site export (SSG)..."
-	@mkdir -p dist/static-site
-	@go run ./cmd/web --ssg-export dist/static-site
-
-demo:
-	@echo "==> Starting Full-Stack Live Demo..."
-	@bash scripts/demo.sh
+demo: demo-vcs
 
 release-check:
 	@echo "==> Validating GoReleaser configuration..."
@@ -172,22 +128,6 @@ license-check:
 license-add:
 	@echo "==> Adding license headers to Go source files..."
 	@python3 scripts/check_license.py --add
-
-migration-diff:
-	@if [ -z "$(name)" ]; then \
-		echo "Error: name is required. Usage: make migration-diff name=migration_name"; \
-		exit 1; \
-	fi
-	@if ! command -v atlas >/dev/null 2>&1; then \
-		echo "Atlas CLI is not installed. Please install it from: https://atlasgo.io/"; \
-		exit 1; \
-	fi
-	@echo "==> Generating DB migration DDL with Atlas..."
-	@mkdir -p ent/migrate/migrations
-	@atlas migrate diff $(name) \
-		--dir "file://ent/migrate/migrations" \
-		--to "ent://ent/schema" \
-		--dev-url "sqlite://dev?mode=memory"
 
 publish-pr:
 	@bash scripts/publish_pr.sh
@@ -224,5 +164,5 @@ self-eval:
 
 clean:
 	@echo "==> Cleaning up build artifacts..."
-	@rm -rf bin/ dist/ ent/migrate/migrations/ test_reports/
+	@rm -rf bin/ dist/ test_reports/
 	@go clean -testcache

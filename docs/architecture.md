@@ -16,94 +16,81 @@ limitations under the License.
 Author: [YOUR_NAME]
 -->
 
-# System Architecture & Technical Specifications
+# Aerovoice System Architecture & Technical Specifications
 
-本書は、`go_template` のシステム全体アーキテクチャ、コンポーネント構成、データフロー、およびテスト階層について詳述します。
+本書は、**Aerovoice（EUROCAE ED-137 航空管制音声通信検証スイート）** のシステム全体アーキテクチャ、コンポーネント構成、データフロー、およびテスト階層について詳述します。
 
 ---
 
 ## 1. 全体アーキテクチャ概要
 
+Aerovoice は管制卓（**VCS**）と地上無線局エミュレータ（**GRS**）の2つの独立した Pure Go プロセスで構成され、SIP/SDP による呼制御および RTP / ED-137 ヘッダー拡張による低遅延音声伝送を行います。
+
 ```mermaid
 graph TD
-    Client["Browser / HTMX Client"]
-    APIClient["API Client / Third-party"]
-    
-    subgraph "Application Stack"
-        WebSrv["cmd/web or cmd/app web<br/>(Standalone HTMX UI Server)"]
-        CoreSrv["cmd/app server<br/>(Secure REST API Server)"]
-        
-        subgraph "Internal Packages"
-            WebPkg["internal/web<br/>- HTMX Handlers<br/>- SSG Engine<br/>- Embedded Assets"]
-            DBPkg["internal/database<br/>- ent ORM Client<br/>- Backup & Restore<br/>- Retention Cleaner"]
-            VerPkg["internal/version<br/>- Version, Commit, Date"]
-        end
+    subgraph "VCS Host (Controller Position :8082)"
+        Browser["Controller Browser<br/>(HTMX Web Console)"]
+        VCS_Web["VCS Web Engine<br/>(internal/vcs)"]
+        VCS_FSM["Radio & Call FSM<br/>(internal/channel)"]
+        VCS_Media["Audio Engine & Jitter Buffer<br/>(internal/media)"]
+        VCS_SIP["SIP User Agent (:5060)<br/>(internal/sip)"]
+        VCS_Recorder["In-Memory Audio Catalog<br/>& WAV Storage"]
     end
-    
-    subgraph "Persistence Layer"
-        SQLite["SQLite (CGO-free WAL)"]
-        Postgres["PostgreSQL (Production)"]
-        Backups["Backup Archives (*.tar.gz)<br/>(SHA256 Manifest Verified)"]
+
+    subgraph "GRS Host (Ground Radio Station :8081)"
+        GRS_Web["GRS Web Testbench<br/>(internal/grs)"]
+        GRS_SIP["SIP Radio UAS (:5070)<br/>(internal/sip)"]
+        GRS_Media["RTP Loopback & Generator<br/>(internal/media)"]
+        GRS_Impair["Network Impairment Injector<br/>(Jitter / Loss / Silent Drop)"]
     end
-    
-    subgraph "Observability Layer"
-        VM["VictoriaMetrics (TSDB)"]
-        Grafana["Grafana Dashboard"]
-    end
-    
-    Client -->|HTTP / HTMX Polling| WebSrv
-    APIClient -->|REST API / Bearer Auth| CoreSrv
-    WebSrv --> WebPkg
-    CoreSrv --> DBPkg
-    CoreSrv --> WebPkg
-    
-    DBPkg -->|Reads / Writes| SQLite
-    DBPkg -->|Reads / Writes| Postgres
-    DBPkg -->|VACUUM & Export| Backups
-    
-    VM -->|Scrape /metrics| CoreSrv
-    Grafana -->|PromQL Query| VM
-    Grafana -->|Direct SQL Query| Postgres
+
+    Browser <-->|HTTP / HTMX & Web Audio| VCS_Web
+    VCS_Web <--> VCS_FSM
+    VCS_FSM <--> VCS_Media
+    VCS_FSM <--> VCS_SIP
+    VCS_Media <--> VCS_Recorder
+
+    VCS_SIP <-->|ED-137 SIP (RFC 3261 / RFC 4566)| GRS_SIP
+    VCS_Media <-->|ED-137 RTP (PTT/SQU/SQI 0x0167)| GRS_Impair
+    GRS_Impair <--> GRS_Media
+    GRS_Web <--> GRS_SIP
+    GRS_Web <--> GRS_Media
 ```
 
 ---
 
 ## 2. コアコンポーネント設計
 
-### 2.1 エントリーポイント構成 (マルチバイナリ & サブコマンド)
-- **`cmd/app`**:
-  - `server`: コア REST API サーバー起動（TLS、自動証明書、Bearer 認証、バックアップ/リストア API、pprof、Prometheus Exporter）。
-  - `web`: スタンドアロン HTMX Web ダッシュボードの起動（または `--ssg-export` による静的サイト出力）。
-- **`cmd/web`**:
-  - Web ダッシュボード専用の独立したバイナリ。Air-gapped 環境やフロントエンド独立コンテナデプロイに最適。
+### 2.1 エントリーポイント構成
+- **`cmd/vcs`**:
+  - 管制卓（VCS: Voice Communication System）コンソールのメインプロセス。
+  - HTMX ダッシュボード（`:8082`）、SIP エージェント（`:5060/udp`）、RTP メディアエンジン（`:10000〜/udp`）を起動。
+- **`cmd/grs-emulator`**:
+  - 対向の地上無線基地局（GRS: Ground Radio Station）シミュレータ。
+  - GRS テストベンチ（`:8081`）、SIP 無線局 UAS（`:5070/udp`）、RTP エコーバック/トーン生成器（`:20000〜/udp`）を起動。
 
-### 2.2 スタンドアロン HTMX フロントエンド & SSG (`internal/web`)
+### 2.2 スタンドアロン HTMX Web コンソール (`internal/vcs`, `internal/grs`)
 - **`//go:embed` 組み込み**:
-  - `internal/web/static/`: HTMX ライブラリ (`htmx.min.js`)、モダンなダークモード CSS (`dashboard.css`) を内包。
-  - `internal/web/templates/`: コンポーネント分割された `html/template` 群。
-- **Hypermedia-Driven レンダリング**:
-  - システムリソースメトリクス（CPU、メモリ、Goroutine数）の 5 秒周期ポーリング。
-  - バックアップ作成ボタン押下時のインプレース部分更新（リアルタイム追加）。
-- **SSG (Static Site Generation)**:
-  - `ExportStaticSite` により、サーバープロセスを起動せずとも同一テンプレートから静的 HTML とアセットを出力。GitHub Pages への公開やオフライン監査用ダッシュボードとして利用可能。
+  - HTML テンプレート、HTMX ライブラリ、およびモダンなダークモード CSS を Go バイナリ内に完全内包。外部 CDN や Node.js/npm なしで完全にオフライン動作。
+- **Hypermedia-Driven レンダリング & Web Audio**:
+  - 周波数選択、PTT/スケルチ状態、電話発着信、および死活監視ステータスをリアルタイム部分更新。
+  - Web Audio API（AudioContext）による 60FPS FFT 音声スペクトラム（0〜4kHz）と VU メーター描画。
+  - 完全無音化（Audio OFF）：マイク入力トラックとオーディオコンテキストを物理停止し、暗騒音漏れをゼロ化。
 
-### 2.3 データベース信頼性・ガバナンス層 (`internal/database`)
-- **DSN 自動最適化**:
-  - SQLite 接続時に `foreign_keys(1)`, `journal_mode(WAL)`, `busy_timeout(5000)` を自動補正。
-  - ファイルベース SQLite の親ディレクトリ未存在時に自動 `os.MkdirAll` を実行し、起動失敗を防止。
-- **改変検知バックアップ (`CreateBackupArchive`)**:
-  - SQLite の安全なスナップショットを抽出し、テーブル別 JSON とマニフェスト（SHA256 チェックサム、レコード数、タイムスタンプ）を `tar.gz` アーカイブ化。
-- **トランザクション復元 (`RestoreBackupArchive`)**:
-  - アーカイブ展開後、SHA256 ハッシュを検証。改変・破損が検知された場合は即座にアボート。
-  - 単一トランザクション内でテーブルデータを全置換し、失敗時は自動ロールバック。
-- **保持期間クリーナー (`PurgeExpiredRecords`)**:
-  - 指定保持日数（`retentionDays`）を超過した古いバックアップファイルおよび時系列レコードを自動パージ。
+### 2.3 航空通信プロトコル層 (`internal/ed137`, `internal/sip`, `internal/media`)
+- **ED-137 SIP シグナリング (`internal/sip`)**:
+  - `sipgo` を用いた Pure Go SIP 呼制御。INVITE / 200 OK / BYE によるセッション確立および SDP ネゴシエーション（G.711 μ-law / A-law, `ptime:20`）。
+- **ED-137 RTP ヘッダー拡張 (`internal/ed137`)**:
+  - Profile `0x0167` による PTT Type（Normal / Priority / Emergency）、PTT-ID、Downlink Squelch（SQU）、Signal Quality Index（SQI 0〜100）の完全送受信。
+- **動的適応型ジッタバッファ (`internal/media/jitter_buffer.go`)**:
+  - ネットワーク遅延・パケット順序逆転・揺らぎを吸収するキュー制御（10ms〜120ms 動的調整）。
+- **録音クォータ管理 (`internal/media/recorder.go`)**:
+  - PTT 送信時および SQU 受信時に自動で 8kHz 16-bit Linear PCM WAV ファイルを生成。
+  - 最大録音件数（デフォルト100件）および最大録音時間（デフォルト5分）の上限管理と自動ローテーション。
 
-### 2.4 オブザーバビリティスタック (`deploy/`)
-- **VictoriaMetrics & Prometheus**:
-  - OpenTelemetry メトリクスおよび標準 Go ランタイムメトリクスを 5 秒間隔で収集。
-- **Grafana 自動プロビジョニング**:
-  - データソース (`deploy/grafana/datasources.yaml`) とダッシュボード (`deploy/grafana/dashboards/overview.json`) をマウントするだけで即時起動。
+### 2.4 PCAP 事後診断エンジン (`internal/pcap`)
+- `pcapgo` を用いた CGO 非依存の PCAP/PCAPNG 解析。
+- VoIP コール・ED-137 拡張ヘッダー（PTT/SQU/SQI）の時系列抽出と音声 WAV 復元。
 
 ---
 
@@ -111,18 +98,15 @@ graph TD
 
 ```mermaid
 graph LR
-    subgraph "Layer 1"
-        L1["Unit & Integration<br/><code>make test</code><br/>- Isolated In-memory DB<br/>- Coverage > 80%<br/>- goleak check"]
+    subgraph "Layer 1: Unit & Coverage"
+        L1["make test<br/>- Pure Go Core Tests<br/>- Coverage >= 80%<br/>- goleak check"]
     end
-    subgraph "Layer 2"
-        L2["Standalone SQLite E2E<br/><code>make sqlite-e2e</code><br/>- No Docker<br/>- Auth & Backup / Restore<br/>- < 3 sec execution"]
+    subgraph "Layer 2: Protocol Integration"
+        L2["make aerovoice-test<br/>- ED-137 SIP / SDP<br/>- RTP Header Extension<br/>- Radio FSM (IDLE/TX/RX)"]
     end
-    subgraph "Layer 3"
-        L3["HTMX Frontend E2E<br/><code>make frontend-e2e</code><br/>- Headless Chrome Snapshot<br/>- HTMX Swaps & Cards<br/>- HTML Report Generated"]
-    end
-    subgraph "Layer 4"
-        L4["Docker Compose E2E<br/><code>make docker-e2e</code><br/>- Multi-container Stack<br/>- PostgreSQL + VictoriaMetrics<br/>- Grafana UI & Metric Assertions"]
+    subgraph "Layer 3: Browser UI E2E"
+        L3["make vcs-frontend-e2e<br/>- Headless Chrome Automation<br/>- VCS HTMX UI Verification<br/>- HTML Report & Screenshots"]
     end
     
-    L1 --> L2 --> L3 --> L4
+    L1 --> L2 --> L3
 ```
