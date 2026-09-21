@@ -71,9 +71,9 @@ type Service struct {
 	// Telephone
 	activePhoneCall *sip.ActiveCall
 
-	// Audio buffer for GRS web speaker & loopback
-	recentAudioSamples []int16
-	audioBroadcaster   chan []int16
+	// Audio buffer for GRS web speaker & loopback FIFO queue
+	loopbackQueue    []int16
+	audioBroadcaster chan []int16
 
 	eventLogs []LogEntry
 	logMu     sync.RWMutex
@@ -177,6 +177,7 @@ func (s *Service) SetAudioSource(src string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.audioSource = src
+	s.loopbackQueue = s.loopbackQueue[:0]
 	if s.voicePlayer != nil {
 		s.voicePlayer.Reset()
 	}
@@ -355,8 +356,11 @@ func (s *Service) handleRTPPacket(ext *ed137.RadioHeaderExtension, pcmSamples []
 		s.rxAudioLevelDB = -96.0
 	}
 
-	// Buffer for loopback
-	s.recentAudioSamples = pcmSamples
+	// Buffer into loopback FIFO queue (max 10s = 80000 samples)
+	s.loopbackQueue = append(s.loopbackQueue, pcmSamples...)
+	if len(s.loopbackQueue) > 80000 {
+		s.loopbackQueue = s.loopbackQueue[len(s.loopbackQueue)-80000:]
+	}
 
 	// Broadcast to browser speaker
 	select {
@@ -428,12 +432,10 @@ func (s *Service) handleSIPOptions(caller string) bool {
 }
 
 func (s *Service) generateAudioFrame(nSamples int) []int16 {
-	s.mu.RLock()
-	src := s.audioSource
-	loopback := s.recentAudioSamples
-	s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	switch src {
+	switch s.audioSource {
 	case "pilot_voice":
 		return s.voicePlayer.NextFrame(nSamples)
 	case "telephony_voice":
@@ -445,10 +447,15 @@ func (s *Service) generateAudioFrame(nSamples int) []int16 {
 	case "simulated_voice":
 		return s.toneGen.GenerateSimulatedVoice(nSamples)
 	case "loopback":
-		if len(loopback) >= nSamples {
-			return loopback[:nSamples]
+		// FIFO playout of received VCS audio
+		if len(s.loopbackQueue) >= nSamples {
+			out := make([]int16, nSamples)
+			copy(out, s.loopbackQueue[:nSamples])
+			s.loopbackQueue = s.loopbackQueue[nSamples:]
+			return out
 		}
-		return s.voicePlayer.NextFrame(nSamples)
+		// When buffer has drained or not yet filled, transmit clean silence
+		return make([]int16, nSamples)
 	default:
 		return s.voicePlayer.NextFrame(nSamples)
 	}

@@ -1075,7 +1075,7 @@ function triggerVoiceTransmission(channelID) {
                     btn.classList.remove('active');
                     btn.disabled = false;
                 }
-            }, 4500);
+            }, 8500);
         })
         .catch(err => {
             console.error('Failed to send voice TX:', err);
