@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/media/codec"
+	"github.com/shjtmy/aerovoice/internal/media/codec"
 )
 
 var upgrader = websocket.Upgrader{

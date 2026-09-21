@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/go_sh0jitmy_template/internal/config"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/ed137"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/grs"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/media"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/vcs"
+	"github.com/shjtmy/aerovoice/internal/config"
+	"github.com/shjtmy/aerovoice/internal/ed137"
+	"github.com/shjtmy/aerovoice/internal/grs"
+	"github.com/shjtmy/aerovoice/internal/media"
+	"github.com/shjtmy/aerovoice/internal/vcs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,18 +44,22 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	require.NoError(t, err)
 
 	// Dynamically allocate isolated ports for parallel test safety
-	freeUDP1, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
-	require.NoError(t, err)
-	grsSIPPort := freeUDP1.LocalAddr().(*net.UDPAddr).Port
-	_ = freeUDP1.Close()
+	getFreePort := func() int {
+		for {
+			ln, lErr := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+			require.NoError(t, lErr)
+			p := ln.LocalAddr().(*net.UDPAddr).Port
+			_ = ln.Close()
+			if p <= 60000 {
+				return p
+			}
+		}
+	}
 
-	freeUDP2, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
-	require.NoError(t, err)
-	vcsSIPPort := freeUDP2.LocalAddr().(*net.UDPAddr).Port
-	_ = freeUDP2.Close()
-
-	grsRTPPort := grsSIPPort + 500
-	vcsRTPPort := vcsSIPPort + 500
+	grsSIPPort := getFreePort()
+	vcsSIPPort := getFreePort()
+	grsRTPPort := getFreePort()
+	vcsRTPPort := getFreePort()
 	grsWebPort := 0
 	vcsWebPort := 0
 

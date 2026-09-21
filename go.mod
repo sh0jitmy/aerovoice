@@ -1,4 +1,4 @@
-module github.com/shjtmy/go_sh0jitmy_template
+module github.com/shjtmy/aerovoice
 
 go 1.26.6
 

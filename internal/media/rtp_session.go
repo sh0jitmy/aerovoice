@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"github.com/pion/rtp/v2"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/ed137"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/media/codec"
+	"github.com/shjtmy/aerovoice/internal/ed137"
+	"github.com/shjtmy/aerovoice/internal/media/codec"
 )
 
 // PacketHandler is called when a valid RTP packet is received.

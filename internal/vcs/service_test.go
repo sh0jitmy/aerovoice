@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/go_sh0jitmy_template/internal/config"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/ed137"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/grs"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/media"
+	"github.com/shjtmy/aerovoice/internal/config"
+	"github.com/shjtmy/aerovoice/internal/ed137"
+	"github.com/shjtmy/aerovoice/internal/grs"
+	"github.com/shjtmy/aerovoice/internal/media"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
