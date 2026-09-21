@@ -253,8 +253,8 @@ func (r *Recorder) StopRecording(sessionID string) (*RecordingMetadata, error) {
 	delete(r.activeRecord, sessionID)
 
 	duration := float64(len(sess.samples)) / 8000.0
-	// Ignore micro recordings (< 0.1s)
-	if len(sess.samples) < 800 {
+	// Ignore empty recordings
+	if len(sess.samples) == 0 {
 		return nil, nil
 	}
 

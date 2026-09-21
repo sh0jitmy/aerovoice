@@ -217,6 +217,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	assert.True(t, snaps[0].PTTActive)
 	assert.Equal(t, "transmitting", snaps[0].State)
 
+	time.Sleep(50 * time.Millisecond)
 	_ = vcsSvc.StopPTT("ch-e2e")
 
 	// 5. Test Telephony in speech mode (Human speech test call)
@@ -227,6 +228,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	assert.True(t, phoneSnap.Active)
 	assert.Equal(t, "speech", phoneSnap.Mode)
 
+	time.Sleep(50 * time.Millisecond)
 	err = vcsSvc.HangupPhone(ctx)
 	require.NoError(t, err)
 
