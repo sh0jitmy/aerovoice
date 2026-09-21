@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.0.2](https://github.com/sh0jitmy/aerovoice/compare/v0.0.1...v0.0.2) - 2026-09-21
+
+- chore: prune docker, ent orm, and legacy template assets for aerovoice by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/10
+- fix(test): isolate parallel test ports and enable dynamic listener addressing by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/12
+
 ## [v0.0.1](https://github.com/sh0jitmy/aerovoice/commits/v0.0.1) - 2026-09-21
 
 - Feat/first commit by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/6
