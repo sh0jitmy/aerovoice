@@ -21,11 +21,13 @@ Aerovoice は、管制卓（VCS: Voice Communication System）コンソールと
 ### 1. Radio (ED-137C Volume 1 相当)
 - **SIP/SDP 呼制御**: RFC 4566 / RFC 3261 に準拠したセッション確立（`a=ptime:10`, `a=ptime:20` 両対応、G.711 A-law / μ-law ネゴシエーション）。
 - **ED-137 RTP ヘッダ拡張**: Profile `0x0167` による PTT Type（Normal / Priority / Emergency）、PTT-ID、Downlink Squelch（SQU）、Signal Quality Index（SQI 0〜100）の完全送受信。
-- **Web Audio API & リアルタイム FFT スペクトラム**: マイク入力（ブラウザ標準）および受信音声を 8kHz でサンプリングし、Canvas 上に 60FPS のリアルタイムオーディオスペクトラム（0〜4kHz）と VU メーターを描画。1kHz 試験トーンのピークや音声フォルマントを視覚的に確認可能。
-- **動的ジッタバッファ**: UI のスライダーから 10ms 〜 120ms のジッタバッファ遅延を動的に調整可能。RFC 3550 Interarrival Jitter と送信ジッタ（OSスケジューラ分散）をリアルタイム表示。
+- **Web Audio API & リアルタイム FFT スペクトラム**: マイク入力（ブラウザ標準）および受信音声を 8kHz でサンプリングし、Canvas 上に 60FPS のリアルタイムオーディオスペクトラム（0〜4kHz）と VU メーターを描画。日本語テスト音声（「テスト、テスト。本日は晴天なり...」）の豊かな声帯フォルマントを可視化。
+- **安全な完全無音化 (Audio ON / OFF)**: Audio OFF 時に Web Audio ハードウェア（AudioContext）を完全解放し、マイク入力トラックを物理停止してノイズや暗騒音のスピーカー漏れを完全ゼロ化（Complete Disable）。
+- **動的ジッタバッファ & スケジューリング再生**: 受信パケットの重なり・音割れを解消する正確なキュー再生と、UI のスライダーによる 10ms 〜 120ms のジッタバッファ動的調整。
 
 ### 2. Telephony (ED-137C Volume 2 相当)
 - **Direct Access (DA) 短縮通話**: 管制卓間のダイレクト通話をワンクリックで発信・着信（Full-Duplex）。
+- **日本語音声通話試験**: 「テスト、テスト。本日は晴天なり、本日は晴天なり。」による明瞭な通話品質評価。
 - **1kHz 試験トーン通話**: 1000Hz 純粋正弦波による回線疎通・音響歪み検証。
 - **300ms エコーバック通話**: 受信した音声を 300ms 遅延させて折り返すループバック通話による受話確認。
 
@@ -42,8 +44,8 @@ Aerovoice は、管制卓（VCS: Voice Communication System）コンソールと
 - **音声復元**: PCAP 内の RTP ペイロードから音声を自動復元し、ブラウザ上で即座に再生可能。
 
 ### 6. GRS シミュレータ・テストベンチ (`http://127.0.0.1:8081`)
-- **生スピーカー受話確認**: VCS から PTT 送信された音声を、対向 GRS 側のコンソールで直接スピーカー再生＆VU/FFT 表示。
-- **SQU 制御 & 音声ソース切替**: スケルチ ON/OFF、1kHzトーン、ビープ音、模擬音声フォルマントの送出。
+- **生スピーカー受話確認**: VCS から PTT 送信された音声を、対向 GRS 側のコンソールで直接スピーカー再生＆VU/FFT 表示（Speaker ON/OFF トグル対応）。
+- **SQU 制御 & 音声ソース切替**: スケルチ ON/OFF、日本語パイロット復唱音声、1kHzトーン、ビープ音の送出。
 - **人工ネットワーク障害注入**: ジッタ（0〜100ms）およびパケットロス（0〜50%）のリアルタイム注入。
 - **Silent Drop 障害シミュレーション**: SIP OPTIONS を意図的に無視し、Supervision の異常検知シナリオを再現。
 
@@ -142,30 +144,32 @@ flowchart TB
     Remote_VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
 ```
 
-### 3. システム間プロトコル & ポート対照表
+### 3. システム間プロトコル & 設定ファイル (YAML)
 
-| プロトコル | VCS 側ポート | GRS 側ポート | 規格 / 用途 |
-| :--- | :--- | :--- | :--- |
-| **SIP** | `5060/udp` | `5070/udp` | RFC 3261 / ED-137C Vol 1&2（呼制御 INVITE/200 OK/BYE、死活監視 OPTIONS） |
-| **RTP** | `10000~/udp` | `20000~/udp` | RFC 3550 / ED-137C Vol 1（G.711 A-law/μ-law + Header Extension `0x0167`） |
-| **HTTP/WS** | `8082/tcp` | `8081/tcp` | 管制卓 Web UI / 無線局テストベンチ UI、リアルタイム WebSocket 音声 |
+ポート番号やバインドIPは設定ファイル（`configs/vcs.yaml`、`configs/grs.yaml`）または環境変数（`AEROVOICE_*`）で変更可能です。
+
+| プロトコル | デフォルト VCS ポート | デフォルト GRS ポート | 設定キー (`configs/*.yaml`) | 用途 |
+| :--- | :--- | :--- | :--- | :--- |
+| **SIP** | `5060/udp` | `5070/udp` | `sip_port` | RFC 3261 / ED-137C Vol 1&2（呼制御 INVITE/200 OK/BYE、死活監視 OPTIONS） |
+| **RTP** | `10000~/udp` | `20000~/udp` | `rtp_port_start`, `rtp_host` | RFC 3550 / ED-137C Vol 1（G.711 A-law/μ-law + Header Extension `0x0167`） |
+| **HTTP/WS** | `8082/tcp` | `8081/tcp` | `http_port` | 管制卓 Web UI / 無線局テストベンチ UI、リアルタイム WebSocket 音声 |
 
 ### 🎮 5分で体験するクイック手順
 
 1. **2画面を左右に並べる**:
    - 左画面: [http://127.0.0.1:8082](http://127.0.0.1:8082) (VCS)
    - 右画面: [http://127.0.0.1:8081](http://127.0.0.1:8081) (GRS)
-   - 左画面（VCS）右上の **「🔊 Enable Audio」** をクリック。
+   - 左画面（VCS）右上の **「🔊 Audio OFF」** ボタンをクリックして **「🔊 Audio ON」** にする（OFFにするとハードウェアを完全解放しノイズゼロ化）。
 2. **無線を発信する (PTT 送信)**:
    - 左画面の `TWR Main` で **「Connect to GRS」** をクリックして接続。
-   - **「PUSH TO TALK」** ボタンまたは **スペースキー長押し** で送信！
-   - 右画面（GRS）の VU メーターが振れ、PC スピーカーから受話音が流れます。
+   - **「PUSH TO TALK」** または **「🗣️ Send ATC Voice」** をクリック！
+   - 右画面（GRS）の VU メーターが振れ、PC スピーカーから日本語テスト音声（「テスト、テスト。本日は晴天なり...」）がクリアに流れます。
 3. **電波を受信する (SQU 受信 & FFT スペクトラム)**:
-   - 右画面（GRS）の **「Squelch Downlink」** を ON にする。
-   - 左画面（VCS）の **SQU ランプが点灯** し、Canvas に **400Hz のスペクトラムピーク** が 60FPS で描画されます。
+   - 右画面（GRS）の **「Squelch Control」** を ON にする。
+   - 左画面（VCS）の **SQU ランプが点灯** し、日本語音声がスピーカーから再生され、Canvas に音声スペクトラムがリアルタイム描画されます。
 4. **直通電話をかける (Telephony DA)**:
-   - 左画面の「Telephony」タブから **「1kHz Tone Test Call」** または **「300ms Echo Loopback Test」** をクリック。
-   - 全二重通話とジッタ測定が実行されます。
+   - 左画面の「Telephony」タブから **「🗣️ Human Speech Test Call」** をクリック。
+   - 日本語品質確認アナウンスによる全二重通話とジッタ測定が実行されます。
 5. **録音を聞く (Recordings)**:
    - 「Recordings」タブで交信音声（WAV）をブラウザ上で即座に再生・ダウンロード可能。
 
