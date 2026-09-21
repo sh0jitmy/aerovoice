@@ -112,20 +112,29 @@ func NewWebServer(svc *VCSService, recorder *media.Recorder, host string, port i
 		return nil, fmt.Errorf("failed to bind VCS Web Console to %s: %w", addr, err)
 	}
 
+	actualAddr := ln.Addr().String()
 	ws.server = &http.Server{
-		Addr:              addr,
+		Addr:              actualAddr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {
-		slog.Info("VCS Web Console listening", "addr", fmt.Sprintf("http://%s", addr))
+		slog.Info("VCS Web Console listening", "addr", fmt.Sprintf("http://%s", actualAddr))
 		if err := ws.server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			slog.Error("VCS Web Server error", "error", err)
 		}
 	}()
 
 	return ws, nil
+}
+
+// Addr returns the network address that the web server is listening on.
+func (w *WebServer) Addr() string {
+	if w.server != nil {
+		return w.server.Addr
+	}
+	return ""
 }
 
 // Close terminates the web server and closes active WebSockets.

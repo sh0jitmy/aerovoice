@@ -17,6 +17,8 @@
 package vcs
 
 import (
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -36,12 +38,17 @@ func TestWebServer_Endpoints(t *testing.T) {
 	recorder, err := media.NewRecorder(recDir)
 	require.NoError(t, err)
 
+	freeUDP, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0})
+	require.NoError(t, err)
+	vcsSIPPort := freeUDP.LocalAddr().(*net.UDPAddr).Port
+	_ = freeUDP.Close()
+
 	cfg := &config.VCSConfig{
 		VCS: config.VCSCoreConfig{
 			SIPHost:               "127.0.0.1",
-			SIPPort:               17060,
+			SIPPort:               vcsSIPPort,
 			RTPHost:               "127.0.0.1",
-			RTPPortStart:          27000,
+			RTPPortStart:          vcsSIPPort + 1000,
 			DefaultPtime:          10,
 			DefaultJitterBufferMs: 40,
 		},
@@ -50,7 +57,7 @@ func TestWebServer_Endpoints(t *testing.T) {
 				ID:             "ch-web-test",
 				Name:           "Tower Web",
 				Frequency:      "118.100 MHz",
-				GRSSIPURI:      "sip:radio@127.0.0.1:17070",
+				GRSSIPURI:      fmt.Sprintf("sip:radio@127.0.0.1:%d", vcsSIPPort+10),
 				Role:           "Main",
 				Ptime:          10,
 				JitterBufferMs: 40,
@@ -62,7 +69,7 @@ func TestWebServer_Endpoints(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = svc.Close() }()
 
-	webSvr, err := NewWebServer(svc, recorder, "127.0.0.1", 18080)
+	webSvr, err := NewWebServer(svc, recorder, "127.0.0.1", 0)
 	require.NoError(t, err)
 	defer func() { _ = webSvr.Close() }()
 
