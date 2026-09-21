@@ -108,7 +108,7 @@ GitHub上でプルリクエストが作成された際、GitHub Copilot PR Revie
 ## 5. アウトプットの言語統制ルール
 Git戦略に基づいて作成される成果物やドキュメントの言語は以下のルールに従って統一しなければならない。
 
-- **コミットメッセージ（Commit Logs）**:
-  - `## 2` に従い、**英語（English）**で記述する。
-- **PR説明・テンプレート（PR Descriptions & Templates） / Issue / AIによるレビューレポート / GitHub CopilotによるPR指摘コメント**:
+- **コミットメッセージ（Commit Logs）および PR タイトル（PR Titles）**:
+  - `## 2` に従い、**英語（English）**で記述する（例: `feat: ...`, `fix: ...`, `chore: ...`）。
+- **PR本文・説明（PR Descriptions & Templates） / Issue / AIによるレビューレポート / GitHub CopilotによるPR指摘コメント**:
   - メンバー間の迅速な意思疎通と品質統制のため、**完全に日本語（Japanese）で統一して作成・出力しなければならない**。英語表現や他言語の混在はプロセス不適合とみなします。

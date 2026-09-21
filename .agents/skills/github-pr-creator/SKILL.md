@@ -1,6 +1,6 @@
 ---
 name: github-pr-creator
-description: "直近のコミットログや git diff を分析し、リポジトリの pull_request_template.md に基づいて日本語の GitHub プルリクエスト（PR）を自動作成する際に使用します。"
+description: "直近のコミットログや git diff を分析し、英語タイトルと日本語ボディでリポジトリの pull_request_template.md に基づく GitHub プルリクエスト（PR）を自動作成する際に使用します。"
 user-invocable: true
 license: Apache-2.0
 compatibility: Designed for Claude Code, Cursor, OpenCode, OpenClaw, and other AI coding agents.
@@ -44,9 +44,12 @@ allowed-tools: Read Edit Write Glob Grep Bash(git:*,gh:*) Agent AskUserQuestion
 - **リモートに存在しない場合**:
   - 「リモートへのプッシュが検出されませんでした。PRを作成する前に、手動で以下のコマンドを実行してプッシュしてください：`git push -u origin <branch>`。プッシュ完了後、再度お知らせください。」とメッセージを出力して処理を一旦停止（終了）します。
 
-### Step 3: 日本語PRタイトル & ボディの自動生成
-- リポジトリの [.github/pull_request_template.md](file://.github/pull_request_template.md) を読み込みます。
-- テンプレートの書式に沿って、分析した変更履歴に基づき**日本語**でドキュメントを構成します。
+### Step 3: 英語PRタイトル & 日本語PRボディの自動生成
+- **PRタイトル（Title）**:
+  - グローバルな開発整合性と検索性を高めるため、PR タイトルは必ず**英語（English）**（Conventional Commits 形式：`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...` 等）で作成します。日本語でのタイトル設定は行いません。
+- **PR本文（Body）**:
+  - リポジトリの [.github/pull_request_template.md](file://.github/pull_request_template.md) を読み込みます。
+  - テンプレートの書式に沿って、分析した変更履歴に基づき**日本語**でドキュメントを構成します。
   - **📝 概要 / Summary**:
     - なぜこの変更を行ったのか（Why）、何が変わったのか（What）の要約。
   - **📦 変更カテゴリ / Change Category**:
