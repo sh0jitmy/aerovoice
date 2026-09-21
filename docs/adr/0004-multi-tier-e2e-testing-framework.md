@@ -20,36 +20,30 @@
 承認済み (Accepted)
 
 ## コンテキスト
-システムの本番品質を保証するためには、単体テスト（Unit Test）だけでなく、実際のHTTPリクエスト、データベース永続化、バックアップ・リストア、フロントエンドUIレンダリング、可観測性（Grafana/VictoriaMetrics）メトリクスの整合性までを網羅する包括的な検証が必要です。
-しかし、全てのテストで Docker を必須とすると、開発サイクルの遅延（フィードバックループの鈍化）やリソース制限のあるCI環境での失敗を招きます。
+航空管制音声通信（ED-137B/C）の実装品質を保証するためには、単体テスト（Unit Test）だけでなく、SIP/SDP 呼制御、RTP / ED-137 拡張ヘッダー音声伝送、ネットワーク障害（ジッタ・パケットロス・Silent Drop）、HTMX による管制卓フロントエンドUIのレンダリング、および事後PCAP解析までを網羅する包括的な検証が必要です。
+また、外部の専用VoIP測定器やハードウェア、重厚な Docker コンテナに依存せず、ローカル環境および GitHub Actions CI 上で高速かつ確実に完結するテスト階層が求められます。
 
 ## 意思決定
 
-以下の 4 層からなる「多層 E2E テストフレームワーク」を構築し、実行速度と検証深度の両立を図ります。
+以下の 3 層からなる「多層 E2E テストフレームワーク」を構築し、Pure Go による決定論的かつ高速な検証を実現します。
 
-1. **Layer 1: 単体 & 結合テスト (`make test`)**:
+1. **Layer 1: 単体テスト & コアプロトコルカバレッジ (`make test`)**:
    - `t.Parallel()` による高速並行実行。
-   - テスト毎に分離されたインメモリ SQLite DSN（`file:<test_name>?mode=memory&cache=shared`）を用いてデータの競合を防止。
-   - `go.uber.org/goleak` による Goroutine リーク検証。
-   - カバレッジ 80% 以上を必須化。
-2. **Layer 2: Standalone SQLite E2E (`make sqlite-e2e`)**:
-   - `scripts/sqlite_e2e.sh`
-   - Docker 不要、外部依存ゼロ。約 2〜3 秒で実行完了。
-   - サーバープロセス起動、ヘルスチェック/Readinessプローブ、JWT/Bearer認証、CRUD、バックアップ作成、整合性検証、リストア、保持期間パージを一括検証。
-3. **Layer 3: Standalone HTMX Frontend E2E (`make frontend-e2e`)**:
-   - `scripts/frontend_e2e.sh` & `scripts/test_frontend_ui.py`
-   - Headless Chrome を用いた自動スナップショット撮影（`docs/images/frontend_dashboard.png`）。
-   - HTMX によるシステムリソースメトリクス取得、ユーザー一覧テーブル、リアルタイムバックアップ作成アクションを検証。
-   - スタンドアロン HTML レポート生成（`test_reports/frontend_e2e_report.html`）。
-4. **Layer 4: Docker Full-Stack & Grafana E2E (`make docker-e2e`)**:
-   - `scripts/docker_e2e.sh` & `scripts/test_grafana_ui.py`
-   - PostgreSQL、VictoriaMetrics、Grafana、コアAPIサーバー、Webサーバーのマルチコンテナ協調動作を検証。
-   - Grafana API ヘルスチェック、ダッシュボードメタデータ、VictoriaMetrics プロメテウスメトリクス（Goroutine 数、ヒープメモリ等）の妥当性を自動アサーション。
-   - Grafana UI スナップショット（`docs/images/grafana_screenshot.png`）および HTML レポート生成。
+   - 動的 UDP / TCP ポート割り当てによる並行テスト時のポート競合完全防止。
+   - `scripts/check_coverage.sh` による Aerovoice コアプロトコル（ed137, channel, sip, pcap, media/codec, config）のカバレッジ検証（80% 以上必須、現在 87.37%）。
+   - `-race` フラグによる低レイテンシ並行処理のデータ競合検出。
+2. **Layer 2: ED-137 Radio & Telephony プロトコル検証スイート (`make aerovoice-test`)**:
+   - `internal/ed137`, `internal/sip`, `internal/media`, `internal/channel`, `internal/vcs`, `internal/grs`, `test/e2e`。
+   - PTT Type（Normal / Priority / Emergency）、Downlink SQUELCH、ジッタバッファ（10ms〜120ms）、Silent Drop 障害シミュレーション、Direct Access 全二重電話通話、Loopback Echo の完全プロトコル疎通テスト。
+3. **Layer 3: Standalone VCS HTMX フロントエンド E2E (`make vcs-frontend-e2e`)**:
+   - `scripts/vcs_frontend_e2e.sh`
+   - Headless Chrome を用いた自動スナップショット撮影（`docs/images/vcs_htmx_dashboard.png`）。
+   - HTMX による Radio チャンネル制御、Telephony DA 発着信、Audio Recordings 再生テーブル、Node Supervision 死活監視、Comm Logs リアルタイムログターミナルの一括検証。
+   - スタンドアロン HTML レポート生成（`test_reports/vcs_frontend_e2e_report.html`）。
 
 ## 帰結
 
 - **利点**:
-  - ローカル開発時は `make sqlite-e2e` や `make frontend-e2e` により、Docker を立ち上げることなく瞬時に完全な E2E 検証が可能。
-  - CI 環境でも `sqlite-e2e` と `frontend-e2e` が迅速に実行され、HTML レポートとスナップショットがアーティファクトとして自動保存される。
-  - リリース前や統合環境では `make docker-e2e` により、本番同様のコンテナスタックと可観測性を確実に保証。
+  - Docker や外部DBを一切起動することなく、ローカル・CI双方で数秒〜数十秒で全レイヤーの検証が完了。
+  - プロトコル層（SIP/RTP）からUI層（HTMX/ブラウザ表示）までを一気通貫で自動検証可能。
+  - HTML ビジュアルレポートおよび Chrome スナップショットにより、変更時のリグレッションを視覚的に即座に検知。

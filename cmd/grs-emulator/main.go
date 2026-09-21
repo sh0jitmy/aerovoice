@@ -24,9 +24,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/shjtmy/go_sh0jitmy_template/internal/config"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/grs"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/version"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/grs"
+	"github.com/sh0jitmy/aerovoice/internal/version"
 )
 
 func main() {

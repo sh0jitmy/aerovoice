@@ -778,6 +778,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupKeyboardPTT();
     loadCommLogs();
     setInterval(loadCommLogs, 3000); // Periodic sync fallback
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab') || window.location.hash.replace('#', '');
+    if (initialTab) {
+        showTab(initialTab);
+    }
 });
 
 let unreadLogCount = 0;
@@ -803,6 +809,11 @@ function showTab(tabId) {
             const container = document.getElementById('recordings-container');
             if (container && window.htmx) {
                 htmx.ajax('GET', '/ui/components/recordings-table', '#recordings-container');
+            }
+        } else if (tabId === 'supervision') {
+            const container = document.getElementById('supervision-container');
+            if (container && window.htmx) {
+                htmx.ajax('GET', '/ui/components/supervision-panel', '#supervision-container');
             }
         }
     }

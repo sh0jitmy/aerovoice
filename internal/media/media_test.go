@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/go_sh0jitmy_template/internal/ed137"
+	"github.com/sh0jitmy/aerovoice/internal/ed137"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

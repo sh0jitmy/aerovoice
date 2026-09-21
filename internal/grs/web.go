@@ -29,7 +29,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/media/codec"
+	"github.com/sh0jitmy/aerovoice/internal/media/codec"
 )
 
 var upgrader = websocket.Upgrader{
@@ -338,6 +338,41 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
     .log-WARN { color: #d29922; }
     .log-ERROR { color: #f85149; }
     .slider-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+    .tab-nav {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+    .tab-btn {
+      background: #161b22;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    .tab-btn:hover {
+      background: #21262d;
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .tab-btn.active {
+      background: #1f6feb;
+      border-color: #388bfd;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(31, 111, 235, 0.4);
+    }
+    .tab-pane {
+      display: none;
+    }
+    .tab-pane.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -354,102 +389,130 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
     </div>
   </div>
 
-  <div class="grid">
-    <!-- Uplink Receiver (VCS -> GRS) -->
-    <div class="card">
-      <h2>📥 Uplink Receiver (From VCS)</h2>
-      <div id="ptt-indicator" class="ptt-box {{if .RxPTTActive}}ptt-active{{end}}">
-        PTT: <span id="ptt-text">{{if .RxPTTActive}}ON (Type: {{.RxPTTType}}, ID: {{.RxPTTID}}){{else}}OFF (Idle){{end}}</span>
+  <!-- Tab Navigation Bar -->
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-btn-radio" onclick="showTab('radio')">📻 Radio Transceiver</button>
+    <button class="tab-btn" id="tab-btn-telephony" onclick="showTab('telephony')">📞 Telephony Test</button>
+    <button class="tab-btn" id="tab-btn-supervision" onclick="showTab('supervision')">🩺 Supervision & Faults</button>
+    <button class="tab-btn" id="tab-btn-logs" onclick="showTab('logs')">📋 Protocol Event Logs</button>
+  </div>
+
+  <!-- TAB 1: RADIO TRANSCEIVER (Uplink & Downlink) -->
+  <div id="pane-radio" class="tab-pane active">
+    <div class="grid">
+      <!-- Uplink Receiver (VCS -> GRS) -->
+      <div class="card">
+        <h2>📥 Uplink Receiver (From VCS)</h2>
+        <div id="ptt-indicator" class="ptt-box {{if .RxPTTActive}}ptt-active{{end}}">
+          PTT: <span id="ptt-text">{{if .RxPTTActive}}ON (Type: {{.RxPTTType}}, ID: {{.RxPTTID}}){{else}}OFF (Idle){{end}}</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span>Live Speaker Audio Output:</span>
+          <button id="btn-speaker" onclick="toggleSpeaker()">🔇 Speaker: OFF</button>
+        </div>
+
+        <div style="margin-top:10px;">
+          <label>Rx Audio Level: <span id="rx-db">{{.RxLevelDB}}</span> dBFS</label>
+          <div class="meter-container">
+            <div id="rx-meter" class="meter-bar" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <p style="font-size:12px;">
+          Rx Jitter: <strong id="rx-jitter">{{.Stats.RxJitterMs}} ms</strong> |
+          Peak: <span id="peak-jitter">{{.Stats.PeakRxJitterMs}} ms</span> |
+          Loss: <span id="rx-loss">{{.Stats.LossRate}}%</span> |
+          Packets: <span id="rx-pkts">{{.Stats.PacketsReceived}}</span>
+        </p>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span>Live Speaker Audio Output:</span>
-        <button id="btn-speaker" onclick="toggleSpeaker()">🔇 Speaker: OFF</button>
-      </div>
+      <!-- Downlink Transmitter (GRS -> VCS) -->
+      <div class="card">
+        <h2>📤 Downlink Transmitter (To VCS)</h2>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span>Squelch (SQU) Control:</span>
+          <button id="btn-squelch" class="{{if .TxSQUActive}}active{{end}}" onclick="toggleSquelch()">
+            {{if .TxSQUActive}}🔘 SQUELCH: ON (Transmitting){{else}}⚪ SQUELCH: OFF{{end}}
+          </button>
+        </div>
 
-      <div style="margin-top:10px;">
-        <label>Rx Audio Level: <span id="rx-db">{{.RxLevelDB}}</span> dBFS</label>
-        <div class="meter-container">
-          <div id="rx-meter" class="meter-bar" style="width: 0%;"></div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block; margin-bottom:6px; font-weight:bold;">Audio Signal Generator (送信音声):</label>
+          <label><input type="radio" name="audiosrc" value="pilot_voice" {{if or (eq .AudioSource "pilot_voice") (eq .AudioSource "")}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>パイロット音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
+          <label><input type="radio" name="audiosrc" value="telephony_voice" {{if eq .AudioSource "telephony_voice"}}checked{{end}} onchange="changeSource(this.value)"> 📞 <strong>電話音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
+          <label><input type="radio" name="audiosrc" value="tone_1khz" {{if eq .AudioSource "tone_1khz"}}checked{{end}} onchange="changeSource(this.value)"> 1 kHz Sine Tone</label><br>
+          <label><input type="radio" name="audiosrc" value="beep_400hz" {{if eq .AudioSource "beep_400hz"}}checked{{end}} onchange="changeSource(this.value)"> 400 Hz ATC Beep</label><br>
+          <label><input type="radio" name="audiosrc" value="simulated_voice" {{if eq .AudioSource "simulated_voice"}}checked{{end}} onchange="changeSource(this.value)"> Simulated Speech Formants</label><br>
+          <label><input type="radio" name="audiosrc" value="loopback" {{if eq .AudioSource "loopback"}}checked{{end}} onchange="changeSource(this.value)"> 🔁 Loopback Echo (VCS Audio)</label>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border);">
+        <h3 style="font-size:13px; color:var(--yellow); margin:6px 0;">⚡ Network Impairment Injection (人工障害注入)</h3>
+        <div class="slider-row">
+          <label style="width:140px;">Injected Jitter: <strong id="lbl-jitter">{{.InjJitterMs}}</strong> ms</label>
+          <input type="range" id="rng-jitter" min="0" max="50" value="{{.InjJitterMs}}" onchange="updateImpairment()">
+        </div>
+        <div class="slider-row">
+          <label style="width:140px;">Injected Loss: <strong id="lbl-loss">{{.InjLossPct}}</strong> %</label>
+          <input type="range" id="rng-loss" min="0" max="30" value="{{.InjLossPct}}" onchange="updateImpairment()">
         </div>
       </div>
-
-      <p style="font-size:12px;">
-        Rx Jitter: <strong id="rx-jitter">{{.Stats.RxJitterMs}} ms</strong> |
-        Peak: <span id="peak-jitter">{{.Stats.PeakRxJitterMs}} ms</span> |
-        Loss: <span id="rx-loss">{{.Stats.LossRate}}%</span> |
-        Packets: <span id="rx-pkts">{{.Stats.PacketsReceived}}</span>
-      </p>
-    </div>
-
-    <!-- Downlink Transmitter (GRS -> VCS) -->
-    <div class="card">
-      <h2>📤 Downlink Transmitter (To VCS)</h2>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <span>Squelch (SQU) Control:</span>
-        <button id="btn-squelch" class="{{if .TxSQUActive}}active{{end}}" onclick="toggleSquelch()">
-          {{if .TxSQUActive}}🔘 SQUELCH: ON (Transmitting){{else}}⚪ SQUELCH: OFF{{end}}
-        </button>
-      </div>
-
-      <div style="margin-bottom:12px;">
-        <label style="display:block; margin-bottom:6px; font-weight:bold;">Audio Signal Generator (送信音声):</label>
-        <label><input type="radio" name="audiosrc" value="pilot_voice" {{if or (eq .AudioSource "pilot_voice") (eq .AudioSource "")}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>パイロット音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
-        <label><input type="radio" name="audiosrc" value="telephony_voice" {{if eq .AudioSource "telephony_voice"}}checked{{end}} onchange="changeSource(this.value)"> 📞 <strong>電話音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
-        <label><input type="radio" name="audiosrc" value="tone_1khz" {{if eq .AudioSource "tone_1khz"}}checked{{end}} onchange="changeSource(this.value)"> 1 kHz Sine Tone</label><br>
-        <label><input type="radio" name="audiosrc" value="beep_400hz" {{if eq .AudioSource "beep_400hz"}}checked{{end}} onchange="changeSource(this.value)"> 400 Hz ATC Beep</label><br>
-        <label><input type="radio" name="audiosrc" value="simulated_voice" {{if eq .AudioSource "simulated_voice"}}checked{{end}} onchange="changeSource(this.value)"> Simulated Speech Formants</label><br>
-        <label><input type="radio" name="audiosrc" value="loopback" {{if eq .AudioSource "loopback"}}checked{{end}} onchange="changeSource(this.value)"> 🔁 Loopback Echo (VCS Audio)</label>
-      </div>
-
-      <hr style="border:0; border-top:1px solid var(--border);">
-      <h3 style="font-size:13px; color:var(--yellow); margin:6px 0;">⚡ Network Impairment Injection (人工障害注入)</h3>
-      <div class="slider-row">
-        <label style="width:140px;">Injected Jitter: <strong id="lbl-jitter">{{.InjJitterMs}}</strong> ms</label>
-        <input type="range" id="rng-jitter" min="0" max="50" value="{{.InjJitterMs}}" onchange="updateImpairment()">
-      </div>
-      <div class="slider-row">
-        <label style="width:140px;">Injected Loss: <strong id="lbl-loss">{{.InjLossPct}}</strong> %</label>
-        <input type="range" id="rng-loss" min="0" max="30" value="{{.InjLossPct}}" onchange="updateImpairment()">
-      </div>
     </div>
   </div>
 
-  <!-- Telephone & Supervision Simulation -->
-  <div class="grid" style="margin-top:16px;">
-    <div class="card">
+  <!-- TAB 2: TELEPHONY TEST -->
+  <div id="pane-telephony" class="tab-pane">
+    <div class="card" style="max-width: 600px;">
       <h2>📞 Telephony Test Panel</h2>
       <p style="font-size:13px;">Auto-Answer Mode: <strong>1 kHz Tone Responder</strong></p>
-      <button onclick="callVCS()">📞 Call VCS Station (101)</button>
-    </div>
-
-    <div class="card">
-      <h2>🩺 Supervision & Fault Simulation</h2>
-      <p style="font-size:13px;">SIP OPTIONS Heartbeat: Responds 200 OK</p>
-      <button id="btn-silent-drop" class="{{if .SilentDrop}}danger{{end}}" onclick="toggleSilentDrop()">
-        {{if .SilentDrop}}⚠️ Silent Drop: ACTIVE (Simulating Offline){{else}}Simulate Silent Drop (Offline){{end}}
-      </button>
+      <p style="font-size:12px; color:#8b949e; line-height:1.5;">
+        Simulate direct access (DA) ground-to-ground calls to the VCS controller station. 
+        Pressing the button initiates an ED-137 SIP INVITE to VCS Station 101 with G.711 μ-law audio stream.
+      </p>
+      <div style="margin-top:16px;">
+        <button onclick="callVCS()" style="padding:10px 18px; font-size:14px; background:#1f6feb; border-color:#388bfd; color:#fff;">📞 Call VCS Station (101)</button>
+      </div>
     </div>
   </div>
 
-  <!-- Real-Time Event Log -->
-  <div style="margin-top:16px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-      <h3 style="font-size:14px; margin:0;">📋 GRS Protocol & Event Log (Real-time)</h3>
-      <div style="display:flex; gap:8px; align-items:center;">
-        <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-grs-scroll" checked> Auto-scroll</label>
-        <button onclick="clearGRSLogs()" style="padding:2px 8px; font-size:11px; cursor:pointer; background:#21262d; border:1px solid #30363d; color:#c9d1d9; border-radius:3px;">Clear</button>
+  <!-- TAB 3: SUPERVISION & FAULT SIMULATION -->
+  <div id="pane-supervision" class="tab-pane">
+    <div class="card" style="max-width: 600px;">
+      <h2>🩺 Supervision & Fault Simulation</h2>
+      <p style="font-size:13px;">SIP OPTIONS Heartbeat: Responds 200 OK</p>
+      <p style="font-size:12px; color:#8b949e; line-height:1.5;">
+        Simulate unexpected network outage or radio station blackout. 
+        When Silent Drop is active, the GRS silently discards incoming SIP OPTIONS keep-alive packets, triggering VCS fault detection alarms.
+      </p>
+      <div style="margin-top:16px;">
+        <button id="btn-silent-drop" class="{{if .SilentDrop}}danger{{end}}" onclick="toggleSilentDrop()" style="padding:10px 18px; font-size:14px;">
+          {{if .SilentDrop}}⚠️ Silent Drop: ACTIVE (Simulating Offline){{else}}Simulate Silent Drop (Offline){{end}}
+        </button>
       </div>
     </div>
-    <div id="log-box" class="log-box">
-      {{range .RecentLogs}}
-      <div class="log-entry log-{{.Level}}">
-        <span style="color:#8b949e;">[{{.Timestamp}}]</span>
-        <span class="badge-proto proto-{{.Protocol}}">{{.Protocol}}</span>
-        <span class="dir-tag dir-{{.Direction}}">[{{.Direction}}]</span>
-        <span>{{.Message}}</span>
+  </div>
+
+  <!-- TAB 4: PROTOCOL EVENT LOGS -->
+  <div id="pane-logs" class="tab-pane">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <h2 style="margin:0; border-bottom:none; padding-bottom:0;">📋 GRS Protocol & Event Log (Real-time)</h2>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <label style="font-size:12px; cursor:pointer;"><input type="checkbox" id="chk-grs-scroll" checked> Auto-scroll</label>
+          <button onclick="clearGRSLogs()" style="padding:4px 10px; font-size:12px; background:#21262d; border:1px solid #30363d; color:#c9d1d9; border-radius:4px;">Clear Logs</button>
+        </div>
       </div>
-      {{end}}
+      <div id="log-box" class="log-box" style="height: 480px;">
+        {{range .RecentLogs}}
+        <div class="log-entry log-{{.Level}}">
+          <span style="color:#8b949e;">[{{.Timestamp}}]</span>
+          <span class="badge-proto proto-{{.Protocol}}">{{.Protocol}}</span>
+          <span class="dir-tag dir-{{.Direction}}">[{{.Direction}}]</span>
+          <span>{{.Message}}</span>
+        </div>
+        {{end}}
+      </div>
     </div>
   </div>
 
@@ -640,6 +703,25 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
       if (!str) return '';
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+
+      const btn = document.getElementById('tab-btn-' + tabId);
+      if (btn) btn.classList.add('active');
+
+      const pane = document.getElementById('pane-' + tabId);
+      if (pane) pane.classList.add('active');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialTab = urlParams.get('tab') || window.location.hash.replace('#', '');
+      if (initialTab) {
+        showTab(initialTab);
+      }
+    });
   </script>
 </body>
 </html>`))

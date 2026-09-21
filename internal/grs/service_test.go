@@ -25,8 +25,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/go_sh0jitmy_template/internal/config"
-	"github.com/shjtmy/go_sh0jitmy_template/internal/sip"
+	"github.com/sh0jitmy/aerovoice/internal/config"
+	"github.com/sh0jitmy/aerovoice/internal/sip"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

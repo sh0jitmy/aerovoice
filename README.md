@@ -182,27 +182,57 @@ make grs-run
 
 # ターミナル 2: VCS コンソールの起動
 make vcs-run
-` + "```" + `
+```
 
-### 3. クロスコンパイル (Windows / macOS)
-` + "```bash" + `
+### 3. Windows 用バイナリのビルド
+Pure Go（`CGO_ENABLED=0`）構成のため、macOS/Linux からのクロスコンパイル、および Windows ローカル環境での直接ビルドが容易に行えます。
+
+#### A. macOS / Linux 環境からクロスコンパイルする場合
+```bash
+make build-windows
+```
+`bin/dist/` 配下に `vcs-windows-amd64.exe` と `grs-windows-amd64.exe` が生成されます。
+
+#### B. Windows 環境（PowerShell）で直接ビルドする場合
+```powershell
+$env:CGO_ENABLED="0"
+go build -trimpath -ldflags="-s -w" -o bin\vcs.exe .\cmd\vcs
+go build -trimpath -ldflags="-s -w" -o bin\grs-emulator.exe .\cmd\grs-emulator
+```
+
+#### C. Windows 環境（コマンドプロンプト CMD）で直接ビルドする場合
+```cmd
+set CGO_ENABLED=0
+go build -trimpath -ldflags="-s -w" -o bin\vcs.exe .\cmd\vcs
+go build -trimpath -ldflags="-s -w" -o bin\grs-emulator.exe .\cmd\grs-emulator
+```
+
+#### D. Windows 上での実行方法
+PowerShell または CMD で以下のように起動します：
+```powershell
+# ターミナル 1: GRS 地上局エミュレータ
+.\bin\grs-emulator.exe -config configs\grs.yaml
+
+# ターミナル 2: VCS 管制卓コンソール
+.\bin\vcs.exe -config configs\vcs.yaml
+```
+起動後、ブラウザで [http://127.0.0.1:8082](http://127.0.0.1:8082)（VCS）および [http://127.0.0.1:8081](http://127.0.0.1:8081)（GRS）にアクセスします。
+
+### 4. クロスコンパイル全種別 (Windows / macOS)
+```bash
 make build-cross
-` + "```" + `
-`bin/dist/` 配下に以下の実行可能ファイルが生成されます：
+```
+`bin/dist/` 配下に以下の実行可能ファイルが一括生成されます：
 - Windows (x86_64): `vcs-windows-amd64.exe`, `grs-windows-amd64.exe`
 - macOS (Apple Silicon): `vcs-darwin-arm64`, `grs-darwin-arm64`
 - macOS (Intel): `vcs-darwin-amd64`, `grs-darwin-amd64`
 
-### 4. 自動テストの実行
-` + "```bash" + `
-make aerovoice-test
-` + "```" + `
-
----
-
-## 🏛️ リポジトリ基盤について
-本リポジトリは、エンタープライズ Go 開発用テンプレートをベースにしており、以下の機能も内包しています：
-
+### 5. 自動テストの実行
+```bash
+make test               # 単体テスト & コアプロトコルカバレッジ検証 (>= 80%)
+make aerovoice-test     # ED-137 無線・電話プロトコル検証テストスイート
+make vcs-frontend-e2e   # Headless Chrome による VCS HTMX フロントエンド E2E
+```
 
 ---
 
@@ -210,35 +240,7 @@ make aerovoice-test
 
 | HTMX スタンドアロンダッシュボード | 自動生成された HTML 検証レポート |
 | :---: | :---: |
-| ![Frontend Dashboard](docs/images/frontend_dashboard.png) | `test_reports/frontend_e2e_report.html` |
-
----
-
-## 🛠️ クイックスタート
-
-### 1. このリポジトリから新規リポジトリを作成
-GitHubの「Use this template」ボタンから、ご自身のリポジトリを作成します。
-
-### 2. モジュール名の変更
-作成したリポジトリの `go.mod` 内のモジュール名を変更します。
-```go
-module github.com/your-username/your-repo-name
-```
-また、`main.go` や `.goreleaser.yaml` などに含まれるプロジェクト名も必要に応じて書き換えてください。
-
-### 3. ローカル即時起動
-Docker 不要で、API サーバーと Web ダッシュボードを即座に起動します：
-```bash
-make run
-```
-- Web ダッシュボード: `http://localhost:3001`
-- REST API / ヘルスチェック: `http://localhost:8080/v1/system/healthz`
-
-### 4. AI カスタムスキルのインストール
-```bash
-make install-all
-```
-*(Claude Code 向けに `~/.claude/skills/` へ、Antigravity 向けに `.agents/skills/` へ配備)*
+| ![Frontend Dashboard](docs/images/vcs_htmx_dashboard.png) | `test_reports/vcs_frontend_e2e_report.html` |
 
 ---
 
@@ -255,6 +257,7 @@ Makefile に定義されている以下のコマンドを使用して開発を�
 | `make test` | データ競合検知 (`-race`) およびコアロジックカバレッジ測定付き単体テスト |
 | `make aerovoice-test` | Aerovoice ED-137 無線・電話プロトコル検証テストスイートの実行 |
 | `make vcs-frontend-e2e` | Aerovoice VCS HTMX フロントエンド E2E テスト & ビジュアルレポート生成 |
+| `make build-windows` | Windows (x86_64) 向け Pure Go（`CGO_ENABLED=0`）バイナリのビルド |
 | `make build-cross` | Windows および macOS 向け Pure Go（`CGO_ENABLED=0`）クロスコンパイル |
 | `make fmt` | ソースコードのフォーマットおよびリンターによる自動修正 |
 | `make lint` | `golangci-lint` を使用した静的解析の実行（Zero-Lint） |

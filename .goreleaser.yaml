@@ -1,23 +1,23 @@
 version: 2
-project_name: go_sh0jitmy_template
+project_name: aerovoice
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: app
-    binary: app
-    main: ./cmd/app
+  - id: vcs
+    binary: vcs
+    main: ./cmd/vcs
     env:
       - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/shjtmy/go_sh0jitmy_template/internal/version.Version={{.Version}}
-      - -X github.com/shjtmy/go_sh0jitmy_template/internal/version.Commit={{.Commit}}
-      - -X github.com/shjtmy/go_sh0jitmy_template/internal/version.Date={{.Date}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Version={{.Version}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Commit={{.Commit}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Date={{.Date}}
     goos:
       - linux
       - darwin
@@ -26,18 +26,18 @@ builds:
       - amd64
       - arm64
 
-  - id: web
-    binary: web
-    main: ./cmd/web
+  - id: grs-emulator
+    binary: grs-emulator
+    main: ./cmd/grs-emulator
     env:
       - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/shjtmy/go_sh0jitmy_template/internal/version.Version={{.Version}}
-      - -X github.com/shjtmy/go_sh0jitmy_template/internal/version.Commit={{.Commit}}
-      - -X github.com/shjtmy/go_sh0jitmy_template/internal/version.Date={{.Date}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Version={{.Version}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Commit={{.Commit}}
+      - -X github.com/sh0jitmy/aerovoice/internal/version.Date={{.Date}}
     goos:
       - linux
       - darwin

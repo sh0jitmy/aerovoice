@@ -54,6 +54,7 @@ make test               # Unit tests with -race and core package coverage check
 make aerovoice-test     # Aerovoice ED-137 protocol test suite
 make vcs-frontend-e2e   # Aerovoice VCS HTMX UI & report verification
 make build              # Build bin/vcs and bin/grs-emulator
+make build-windows      # Build Windows (x86_64) binaries in bin/dist/
 make build-cross        # Cross-compile for Windows & macOS (CGO_ENABLED=0)
 
 # Execution & Demo

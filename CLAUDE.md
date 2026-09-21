@@ -21,6 +21,7 @@
 - **VCS コンソール起動**: `make vcs-run` (http://127.0.0.1:8082)
 - **GRS エミュレータ起動**: `make grs-run` (http://127.0.0.1:8081)
 - **Aerovoice 2画面ライブデモ**: `make demo` (または `make demo-vcs`)
+- **Windowsバイナリビルド**: `make build-windows`
 - **Windows/macOSクロスコンパイル**: `make build-cross`
 - **コードフォーマット**: `make fmt`
 - **静的解析の実行**: `make lint`

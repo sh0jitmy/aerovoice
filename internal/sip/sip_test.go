@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shjtmy/go_sh0jitmy_template/internal/media/codec"
+	"github.com/sh0jitmy/aerovoice/internal/media/codec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
