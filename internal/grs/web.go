@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"sync"
@@ -77,13 +78,27 @@ func NewWebServer(svc *Service, host string, port int) (*WebServer, error) {
 
 // Start launches the GRS HTTP server in a goroutine.
 func (w *WebServer) Start() error {
+	ln, err := net.Listen("tcp", w.server.Addr)
+	if err != nil {
+		return fmt.Errorf("failed to bind GRS Web Console to %s: %w", w.server.Addr, err)
+	}
+	w.server.Addr = ln.Addr().String()
+
 	slog.Info("Starting GRS Testbench Web Console", "addr", w.server.Addr)
 	go func() {
-		if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := w.server.Serve(ln); err != nil && err != http.ErrServerClosed {
 			slog.Error("GRS Web server failed", "error", err)
 		}
 	}()
 	return nil
+}
+
+// Addr returns the network address that the web server is listening on.
+func (w *WebServer) Addr() string {
+	if w.server != nil {
+		return w.server.Addr
+	}
+	return ""
 }
 
 // Close terminates the web server.
