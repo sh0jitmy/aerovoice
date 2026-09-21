@@ -50,7 +50,7 @@ type SIPNodeConfig struct {
 	Host          string
 	Port          int
 	UserAgentName string
-	OnInvite      func(caller string, callID string, sdpOffer []byte) ([]byte, error)
+	OnInvite      func(caller string, recipient string, callID string, sdpOffer []byte) ([]byte, error)
 	OnBye         func(callID string)
 	OnOptions     func(caller string) bool // true to respond 200 OK, false for silent drop
 }
@@ -245,13 +245,14 @@ func (n *SIPNode) Close() error {
 func (n *SIPNode) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 	callID := req.CallID().Value()
 	caller := req.From().Address.String()
+	recipient := req.Recipient.String()
 	sdpOffer := req.Body()
 
 	var sdpAnswer []byte
 	var err error
 
 	if n.cfg.OnInvite != nil {
-		sdpAnswer, err = n.cfg.OnInvite(caller, callID, sdpOffer)
+		sdpAnswer, err = n.cfg.OnInvite(caller, recipient, callID, sdpOffer)
 	}
 
 	if err != nil {

@@ -164,6 +164,19 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	require.Len(t, chSnaps, 1)
 	assert.Equal(t, "connected", chSnaps[0].State)
 
+	// 5.5. Immediate Downlink SQUELCH Carrier without prior PTT (Verifies Rx works without PTT)
+	grsSvc.SetSquelch(true)
+	assert.Eventually(t, func() bool {
+		snaps := vcsSvc.GetChannelSnapshots()
+		return len(snaps) > 0 && snaps[0].SQUActive
+	}, 2*time.Second, 20*time.Millisecond, "GRS downlink audio must be receivable immediately upon connection without requiring PTT")
+
+	grsSvc.SetSquelch(false)
+	assert.Eventually(t, func() bool {
+		snaps := vcsSvc.GetChannelSnapshots()
+		return len(snaps) > 0 && !snaps[0].SQUActive
+	}, 2*time.Second, 20*time.Millisecond)
+
 	// 6. VCS PTT Transmission -> GRS Reception
 	err = vcsSvc.StartPTT("ch-e2e-1", ed137.PTTNormal, 1)
 	require.NoError(t, err)
@@ -183,16 +196,16 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 
 	// 7. GRS Downlink SQUELCH Carrier -> VCS Reception
 	grsSvc.SetSquelch(true)
-	time.Sleep(150 * time.Millisecond)
-
-	chSnaps = vcsSvc.GetChannelSnapshots()
-	assert.True(t, chSnaps[0].SQUActive)
+	assert.Eventually(t, func() bool {
+		snaps := vcsSvc.GetChannelSnapshots()
+		return len(snaps) > 0 && snaps[0].SQUActive
+	}, 2*time.Second, 20*time.Millisecond)
 
 	grsSvc.SetSquelch(false)
-	time.Sleep(100 * time.Millisecond)
-
-	chSnaps = vcsSvc.GetChannelSnapshots()
-	assert.False(t, chSnaps[0].SQUActive)
+	assert.Eventually(t, func() bool {
+		snaps := vcsSvc.GetChannelSnapshots()
+		return len(snaps) > 0 && !snaps[0].SQUActive
+	}, 2*time.Second, 20*time.Millisecond)
 
 	// 8. VCS Telephony Call to GRS
 	err = vcsSvc.DialDA(ctx, "da-grs", "tone")

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -369,13 +370,13 @@ func (s *Service) handleRTPPacket(ext *ed137.RadioHeaderExtension, pcmSamples []
 	}
 }
 
-func (s *Service) handleSIPInvite(caller, callID string, sdpOffer []byte) ([]byte, error) {
+func (s *Service) handleSIPInvite(caller, recipient, callID string, sdpOffer []byte) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.isSessionConnected = true
 	s.clientSIPAddr = caller
-	s.logEvent("SIP", "RX", "INFO", fmt.Sprintf("Received SIP INVITE from %s (CallID: %s)", caller, callID))
+	s.logEvent("SIP", "RX", "INFO", fmt.Sprintf("Received SIP INVITE to %s from %s (CallID: %s)", recipient, caller, callID))
 
 	// Parse client SDP to set remote RTP address
 	mediaInfo, err := sip.ParseRadioSDP(sdpOffer)
@@ -395,8 +396,9 @@ func (s *Service) handleSIPInvite(caller, callID string, sdpOffer []byte) ([]byt
 		return nil, err
 	}
 
-	// If telephone auto-answer is enabled, start sending audio immediately
-	if s.cfg.GRS.Telephone.AutoAnswer {
+	// Only trigger telephone auto-answer for telephony calls (not radio channels)
+	isRadioEndpoint := strings.Contains(strings.ToLower(recipient), "radio")
+	if !isRadioEndpoint && s.cfg.GRS.Telephone.AutoAnswer {
 		go func() {
 			time.Sleep(100 * time.Millisecond)
 			s.mu.Lock()

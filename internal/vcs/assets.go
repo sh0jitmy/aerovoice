@@ -850,98 +850,130 @@ function handleEventMessage(msg) {
 let isAudioActive = false;
 let nextPlayTime = 0;
 
-async function toggleWebAudio() {
-    const btn = document.getElementById('btn-audio-init');
-
-    if (isAudioActive) {
-        // Complete Disable: Close AudioContext and release hardware
-        isAudioActive = false;
-        if (micStream) {
-            micStream.getTracks().forEach(t => t.stop());
-            micStream = null;
+async function enableWebAudio() {
+    if (isAudioActive && audioCtx && audioCtx.state !== 'closed') {
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
         }
-        if (audioCtx) {
-            try {
-                await audioCtx.close();
-            } catch (e) {
-                console.warn('Error closing audioCtx:', e);
-            }
-            audioCtx = null;
-            analyser = null;
-        }
-        nextPlayTime = 0;
+        return;
+    }
 
-        // Reset VU meter
-        const vuBar = document.getElementById('vu-bar');
-        if (vuBar) vuBar.style.width = '0%';
+    try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
 
-        if (btn) {
-            btn.innerHTML = '<span class="icon">&#128263;</span> Audio OFF';
-            btn.classList.remove('active');
-            btn.classList.add('muted');
-        }
-    } else {
-        // Enable: Fresh initialization
+        // Try getting microphone access
         try {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.8;
-
-            // Try getting microphone access
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, sampleRate: 8000 } });
-                const micSource = audioCtx.createMediaStreamSource(micStream);
-                
-                // Script processor to sample PCM 16-bit
-                const processor = audioCtx.createScriptProcessor(512, 1, 1);
-                processor.onaudioprocess = (e) => {
-                    if (isAudioActive && isPTTActive && ws && ws.readyState === WebSocket.OPEN) {
-                        const inputData = e.inputBuffer.getChannelData(0);
-                        const pcm16 = new Int16Array(inputData.length);
-                        for (let i = 0; i < inputData.length; i++) {
-                            let s = Math.max(-1, Math.min(1, inputData[i]));
-                            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                        }
-                        ws.send(pcm16.buffer);
+            micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, sampleRate: 8000 } });
+            const micSource = audioCtx.createMediaStreamSource(micStream);
+            
+            // Script processor to sample PCM 16-bit
+            const processor = audioCtx.createScriptProcessor(512, 1, 1);
+            processor.onaudioprocess = (e) => {
+                if (isAudioActive && isPTTActive && ws && ws.readyState === WebSocket.OPEN) {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    const pcm16 = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        let s = Math.max(-1, Math.min(1, inputData[i]));
+                        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
                     }
-                };
-                micSource.connect(processor);
+                    ws.send(pcm16.buffer);
+                }
+            };
+            micSource.connect(processor);
 
-                // Zero-gain routing: Prevents microphone background noise from leaking to the speaker
-                const muteGain = audioCtx.createGain();
-                muteGain.gain.value = 0;
-                processor.connect(muteGain);
-                muteGain.connect(audioCtx.destination);
-            } catch (e) {
-                console.warn('Microphone access denied or unavailable, synthetic tone will be used for PTT:', e);
-            }
-
-            if (audioCtx.state === 'suspended') {
-                await audioCtx.resume();
-            }
-
-            isAudioActive = true;
-            nextPlayTime = audioCtx.currentTime + 0.025;
-
-            if (btn) {
-                btn.innerHTML = '<span class="icon">&#128266;</span> Audio ON';
-                btn.classList.remove('muted');
-                btn.classList.add('active');
-            }
-
-            startSpectrumRender();
-        } catch (err) {
-            console.error('Failed to init Web Audio:', err);
-            isAudioActive = false;
+            // Zero-gain routing: Prevents microphone background noise from leaking to the speaker
+            const muteGain = audioCtx.createGain();
+            muteGain.gain.value = 0;
+            processor.connect(muteGain);
+            muteGain.connect(audioCtx.destination);
+        } catch (e) {
+            console.warn('Microphone access denied or unavailable, synthetic tone will be used for PTT:', e);
         }
+
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+
+        isAudioActive = true;
+        nextPlayTime = audioCtx.currentTime + 0.025;
+
+        const btn = document.getElementById('btn-audio-init');
+        if (btn) {
+            btn.innerHTML = '<span class="icon">&#128266;</span> Audio ON';
+            btn.classList.remove('muted');
+            btn.classList.add('active');
+        }
+
+        startSpectrumRender();
+    } catch (err) {
+        console.error('Failed to enable Web Audio:', err);
+        isAudioActive = false;
+    }
+}
+
+async function disableWebAudio() {
+    isAudioActive = false;
+    if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+    }
+    if (audioCtx) {
+        try {
+            await audioCtx.close();
+        } catch (e) {
+            console.warn('Error closing audioCtx:', e);
+        }
+        audioCtx = null;
+        analyser = null;
+    }
+    nextPlayTime = 0;
+
+    // Reset VU meter
+    const vuBar = document.getElementById('vu-bar');
+    if (vuBar) vuBar.style.width = '0%';
+
+    const btn = document.getElementById('btn-audio-init');
+    if (btn) {
+        btn.innerHTML = '<span class="icon">&#128263;</span> Audio OFF';
+        btn.classList.remove('active');
+        btn.classList.add('muted');
+    }
+}
+
+async function toggleWebAudio() {
+    if (isAudioActive) {
+        await disableWebAudio();
+    } else {
+        await enableWebAudio();
     }
 }
 
 // Backward compatibility for existing buttons or scripts
 function initWebAudio() {
-    return toggleWebAudio();
+    return enableWebAudio();
 }
+
+// Immediate audio activation when user clicks "Connect to GRS"
+async function handleConnectChannel(channelID) {
+    await enableWebAudio();
+    fetch('/api/radio/connect?id=' + encodeURIComponent(channelID), { method: 'POST' });
+}
+
+// Immediate audio activation when user clicks Telephony DA dial
+async function handleDialDA(daID, mode) {
+    await enableWebAudio();
+    fetch('/api/telephony/dial?da=' + encodeURIComponent(daID) + '&mode=' + encodeURIComponent(mode || 'normal'), { method: 'POST' });
+}
+
+// Resume suspended AudioContext on user interaction
+window.addEventListener('click', () => {
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+}, { once: false });
 
 function handleBinaryAudio(arrayBuffer) {
     if (!audioCtx || !isAudioActive) return;
