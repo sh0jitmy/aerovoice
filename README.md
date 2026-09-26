@@ -82,18 +82,29 @@ graph TD
         GRS_Impair["Network Impairment Injector<br/>(Jitter / Loss / Silent Drop)"]
     end
 
-    Browser <-->|HTTP / HTMX & Web Audio| VCS_Web
+    Browser <-->|"HTTP / HTMX & Web Audio"| VCS_Web
     VCS_Web <--> VCS_FSM
     VCS_FSM <--> VCS_Media
     VCS_FSM <--> VCS_SIP
     VCS_Media <--> VCS_Recorder
 
-    VCS_SIP <-->|ED-137 SIP (RFC 3261 / RFC 4566)| GRS_SIP
-    VCS_Media <-->|ED-137 RTP (PTT/SQU/SQI 0x0167)| GRS_Impair
+    VCS_SIP <-->|"ED-137 SIP (RFC 3261 / RFC 4566)"| GRS_SIP
+    VCS_Media <-->|"ED-137 RTP (PTT/SQU/SQI 0x0167)"| GRS_Impair
     GRS_Impair <--> GRS_Media
     GRS_Web <--> GRS_SIP
     GRS_Web <--> GRS_Media
 ```
+
+### Inter-System Protocols & Port Reference
+
+Port numbers and binding interfaces can be customized via YAML configuration files (`configs/vcs.yaml`, `configs/grs.yaml`) or environment variables (`AEROVOICE_*`):
+
+| Protocol | Default VCS Port | Default GRS Port | Config Key (`configs/*.yaml`) | Purpose & Standard |
+| :--- | :--- | :--- | :--- | :--- |
+| **SIP** | `5060/udp` | `5070/udp` | `sip_port` | RFC 3261 / ED-137C Vol 1&2 (Call session INVITE/200 OK/BYE, OPTIONS keepalive) |
+| **RTP** | `10000~/udp` | `20000~/udp` | `rtp_port_start`, `rtp_host` | RFC 3550 / ED-137C Vol 1 (G.711 A-law/μ-law + Header Extension `0x0167` for PTT/SQU) |
+| **HTTP/WS** | `8082/tcp` | `8081/tcp` | `http_port` | Controller Console / Radio Testbench UI, Real-time WebSocket audio streaming |
+| **Audio Recorder** | Default 100 rec / 5 min | - | `recording.max_recordings`, `recording.max_duration_seconds` | ED-137 Vol 4 Legal recording storage (FIFO retention, ~480MB max budget) |
 
 ---
 

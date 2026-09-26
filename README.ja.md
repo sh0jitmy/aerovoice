@@ -73,7 +73,38 @@ make demo-vcs
 
 Aerovoice は管制官が操作する **VCS（Voice Communication System）** と、対向の地上無線基地局を模擬する **GRS（Ground Radio Station）** の 2 つの独立したシステムが、EUROCAE ED-137C 規格に準拠したプロトコルでネットワーク連携しています。
 
-### 1. VCS (Voice Communication System) 側システム構成図
+```mermaid
+graph TD
+    subgraph "VCS 管制卓ホスト (:8082)"
+        Browser_JA["管制官ブラウザ<br/>(HTMX Webコンソール)"]
+        VCS_Web_JA["VCS Web エンジン<br/>(internal/vcs)"]
+        VCS_FSM_JA["無線 & 電話 FSM<br/>(internal/channel)"]
+        VCS_Media_JA["音声エンジン & ジッタバッファ<br/>(internal/media)"]
+        VCS_SIP_JA["SIP エージェント (:5060)<br/>(internal/sip)"]
+        VCS_Recorder_JA["録音カタログ & WAV保存<br/>(internal/media)"]
+    end
+
+    subgraph "GRS 地上無線局ホスト (:8081)"
+        GRS_Web_JA["GRS Web テストベンチ<br/>(internal/grs)"]
+        GRS_SIP_JA["SIP 無線 UAS (:5070)<br/>(internal/sip)"]
+        GRS_Media_JA["RTP ループバック & 音声生成<br/>(internal/media)"]
+        GRS_Impair_JA["ネットワーク障害注入器<br/>(ジッタ / 損失 / 応答遮断)"]
+    end
+
+    Browser_JA <-->|"HTTP / HTMX & Web Audio"| VCS_Web_JA
+    VCS_Web_JA <--> VCS_FSM_JA
+    VCS_FSM_JA <--> VCS_Media_JA
+    VCS_FSM_JA <--> VCS_SIP_JA
+    VCS_Media_JA <--> VCS_Recorder_JA
+
+    VCS_SIP_JA <-->|"ED-137 SIP (RFC 3261 / RFC 4566)"| GRS_SIP_JA
+    VCS_Media_JA <-->|"ED-137 RTP (PTT/SQU/SQI 0x0167)"| GRS_Impair_JA
+    GRS_Impair_JA <--> GRS_Media_JA
+    GRS_Web_JA <--> GRS_SIP_JA
+    GRS_Web_JA <--> GRS_Media_JA
+```
+
+### 1. VCS (Voice Communication System) 側詳細システム構成図
 管制官のオペレーション卓として機能するクライアント＆サーバーシステムです。
 
 ```mermaid
@@ -96,16 +127,16 @@ flowchart TB
         Remote_RTP["RTP 待受ポート (:20000~/udp)"]
     end
 
-    VCS_UI <-->|HTTP GET/POST| VCS_Web
-    VCS_Audio <-->|WebSocket 双方向音声| VCS_WS
+    VCS_UI <-->|"HTTP GET/POST"| VCS_Web
+    VCS_Audio <-->|"WebSocket 双方向音声"| VCS_WS
     VCS_Web --> VCS_Core
     VCS_WS <--> VCS_Core
 
     VCS_Core <--> VCS_SIP
     VCS_Core <--> VCS_RTP
 
-    VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| Remote_SIP
-    VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| Remote_RTP
+    VCS_SIP <-->|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| Remote_SIP
+    VCS_RTP <-->|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| Remote_RTP
 ```
 
 ### 2. GRS (Ground Radio Station) 側システム構成図
@@ -134,9 +165,9 @@ flowchart TB
 
     Speaker["PC スピーカー音声出力"]
 
-    GRS_UI <-->|HTTP GET/POST| GRS_Web
-    GRS_Core -->|リアルタイム音声データ| GRS_WS
-    GRS_WS -->|WebSocket| GRS_Audio
+    GRS_UI <-->|"HTTP GET/POST"| GRS_Web
+    GRS_Core -->|"リアルタイム音声データ"| GRS_WS
+    GRS_WS -->|"WebSocket"| GRS_Audio
     GRS_Audio --> Speaker
 
     GRS_Web --> GRS_Core
@@ -144,8 +175,8 @@ flowchart TB
     GRS_Impair <--> GRS_SIP
     GRS_Impair <--> GRS_RTP
 
-    Remote_VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| GRS_SIP
-    Remote_VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
+    Remote_VCS_SIP <-->|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| GRS_SIP
+    Remote_VCS_RTP <-->|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
 ```
 
 ### 3. システム間プロトコル & 設定ファイル (YAML)
