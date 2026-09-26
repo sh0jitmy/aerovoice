@@ -96,16 +96,16 @@ flowchart TB
         Remote_RTP["RTP 待受ポート (:20000~/udp)"]
     end
 
-    VCS_UI <-->|HTTP GET/POST| VCS_Web
-    VCS_Audio <-->|WebSocket 双方向音声| VCS_WS
+    VCS_UI <-->|"HTTP GET/POST"| VCS_Web
+    VCS_Audio <-->|"WebSocket 双方向音声"| VCS_WS
     VCS_Web --> VCS_Core
     VCS_WS <--> VCS_Core
 
     VCS_Core <--> VCS_SIP
     VCS_Core <--> VCS_RTP
 
-    VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| Remote_SIP
-    VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| Remote_RTP
+    VCS_SIP <-->|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| Remote_SIP
+    VCS_RTP <-->|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| Remote_RTP
 ```
 
 ### 2. GRS (Ground Radio Station) 側システム構成図
@@ -134,9 +134,9 @@ flowchart TB
 
     Speaker["PC スピーカー音声出力"]
 
-    GRS_UI <-->|HTTP GET/POST| GRS_Web
-    GRS_Core -->|リアルタイム音声データ| GRS_WS
-    GRS_WS -->|WebSocket| GRS_Audio
+    GRS_UI <-->|"HTTP GET/POST"| GRS_Web
+    GRS_Core -->|"リアルタイム音声データ"| GRS_WS
+    GRS_WS -->|"WebSocket"| GRS_Audio
     GRS_Audio --> Speaker
 
     GRS_Web --> GRS_Core
@@ -144,8 +144,8 @@ flowchart TB
     GRS_Impair <--> GRS_SIP
     GRS_Impair <--> GRS_RTP
 
-    Remote_VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| GRS_SIP
-    Remote_VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
+    Remote_VCS_SIP <-->|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| GRS_SIP
+    Remote_VCS_RTP <-->|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
 ```
 
 ### 3. システム間プロトコル & 設定ファイル (YAML)

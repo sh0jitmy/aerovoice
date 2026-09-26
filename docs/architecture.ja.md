@@ -46,14 +46,14 @@ graph TD
         GRS_Impair["Network Impairment Injector<br/>(Jitter / Loss / Silent Drop)"]
     end
 
-    Browser <-->|HTTP / HTMX & Web Audio| VCS_Web
+    Browser <-->|"HTTP / HTMX & Web Audio"| VCS_Web
     VCS_Web <--> VCS_FSM
     VCS_FSM <--> VCS_Media
     VCS_FSM <--> VCS_SIP
     VCS_Media <--> VCS_Recorder
 
-    VCS_SIP <-->|ED-137 SIP (RFC 3261 / RFC 4566)| GRS_SIP
-    VCS_Media <-->|ED-137 RTP (PTT/SQU/SQI 0x0167)| GRS_Impair
+    VCS_SIP <-->|"ED-137 SIP (RFC 3261 / RFC 4566)"| GRS_SIP
+    VCS_Media <-->|"ED-137 RTP (PTT/SQU/SQI 0x0167)"| GRS_Impair
     GRS_Impair <--> GRS_Media
     GRS_Web <--> GRS_SIP
     GRS_Web <--> GRS_Media

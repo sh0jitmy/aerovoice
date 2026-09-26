@@ -36,16 +36,16 @@ flowchart TB
         Remote_RTP["RTP Port (:20000~/udp)"]
     end
 
-    VCS_UI <-->|HTTP GET/POST| VCS_Web
-    VCS_Audio <-->|WebSocket Audio & Events| VCS_WS
+    VCS_UI <-->|"HTTP GET/POST"| VCS_Web
+    VCS_Audio <-->|"WebSocket Audio & Events"| VCS_WS
     VCS_Web --> VCS_Core
     VCS_WS <--> VCS_Core
 
     VCS_Core <--> VCS_SIP
     VCS_Core <--> VCS_RTP
 
-    VCS_SIP <===>|"① Call Signaling (SIP:5060 ⇄ 5070)"| Remote_SIP
-    VCS_RTP <===>|"② ED-137 Audio Stream (RTP:10000~ ⇄ 20000~)"| Remote_RTP
+    VCS_SIP <-->|"① Call Signaling (SIP:5060 ⇄ 5070)"| Remote_SIP
+    VCS_RTP <-->|"② ED-137 Audio Stream (RTP:10000~ ⇄ 20000~)"| Remote_RTP
 ```
 
 ### 1.2 GRS (Ground Radio Station) Architecture
@@ -71,9 +71,9 @@ flowchart TB
     GRS_Web <--> GRS_Audio
     GRS_Web <--> GRS_Impair
 
-    GRS_SIP <===>|"SIP Signaling (5070 ⇄ 5060)"| VCS_SIP_R
+    GRS_SIP <-->|"SIP Signaling (5070 ⇄ 5060)"| VCS_SIP_R
     GRS_Audio --> GRS_Impair --> GRS_RTP
-    GRS_RTP <===>|"ED-137 Audio Stream (20000~ ⇄ 10000~)"| VCS_RTP_R
+    GRS_RTP <-->|"ED-137 Audio Stream (20000~ ⇄ 10000~)"| VCS_RTP_R
 ```
 
 ### 1.3 Port Assignment & Protocol Reference Table
@@ -131,10 +131,10 @@ Verifies air-ground radio transmission from the controller to the aircraft.
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Controller as Controller (VCS)
-    participant VCS as VCS (:8082)
-    participant GRS as GRS (:8081)
-    actor Speaker as PC Speakers
+    actor Controller as "Controller (VCS)"
+    participant VCS as "VCS (:8082)"
+    participant GRS as "GRS (:8081)"
+    actor Speaker as "PC Speakers"
 
     Controller->>VCS: Click "Connect to GRS"
     VCS->>GRS: SIP INVITE (Frequency 118.100 MHz)
