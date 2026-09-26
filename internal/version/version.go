@@ -19,7 +19,7 @@ package version
 
 // Version is the current semantic version of the application.
 // Managed and automatically bumped by tagpr in CI/CD.
-var Version = "0.0.3"
+var Version = "0.0.4"
 
 // Commit is the git commit hash injected during build time by GoReleaser (-ldflags).
 var Commit = "none"
