@@ -276,3 +276,13 @@ Makefile に定義されている以下のコマンドを使用して開発を�
 
 `make self-eval` コマンドを実行すると、`REQUIREMENTS.md` のチェックボックス（`[x]`）が集計され、適合率（パーセンテージ）が自動計算されてファイル下部に反映されます。
 常に適合率 100% を維持する開発プラクティスを推奨します。
+
+---
+
+## 🔄 継続的依存関係更新 (Dependabot)
+
+本リポジトリでは [Dependabot](.github/dependabot.yml) を導入し、依存関係の脆弱性解消とバージョン追従を自動化しています：
+- **Go Modules (`gomod`)**: 毎週月曜日にマイナーおよびパッチ更新を 1 つの PR に集約（`minor-and-patch` グループ）。メジャー更新は破壊的変更の精査のため単独 PR を作成。
+- **GitHub Actions (`github-actions`)**: 毎週月曜日にワークフロー内のアクション更新を 1 つの PR に集約。
+- **自動マージ連携 (`.github/workflows/dependabot-auto-merge.yml`)**: 安全なマイナー/パッチ更新および Actions 更新は、CI パイプライン通過後に自動で squash マージされ、運用負荷を最小化します。
+
