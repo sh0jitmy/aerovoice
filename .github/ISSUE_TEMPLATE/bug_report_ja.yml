@@ -1,0 +1,101 @@
+name: "🐛 バグ報告 (Bug Report - 日本語)"
+description: Aerovoice アプリケーションの不具合やエラーを日本語で報告します。
+title: "[BUG]: 短い要約"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        バグの報告ありがとうございます。再現に必要な情報をできるだけ詳しく記入してください。
+
+  - type: input
+    id: go-version
+    attributes:
+      label: 🔧 Go バージョン
+      description: "`go version` の出力を記入してください。"
+      placeholder: "go1.26.0 darwin/arm64"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: 💻 OS / 動作環境
+      description: "OS の種類とバージョンを記入してください。"
+      placeholder: "macOS 15.5 / Ubuntu 24.04 / Windows 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 📦 影響コンポーネント
+      description: バグが発生しているサブシステムを選択してください。
+      options:
+        - "VCS コンソール (cmd/vcs, internal/vcs)"
+        - "GRS 無線エミュレータ (cmd/grs, internal/grs)"
+        - "ED-137 無線ヘッダー & プロトコル (internal/ed137)"
+        - "SIP / SDP シグナリング (internal/sip)"
+        - "音声コーデック & ジッターバッファ (internal/media)"
+        - "HTMX Web UI & 静的アセット (internal/vcs, internal/grs)"
+        - "PCAP パケットキャプチャ & アナライザ (internal/pcap)"
+        - "チャネル & ノード死活監視 (internal/channel)"
+        - "設定 & ログ (internal/config)"
+        - "CI / CD / E2E テスト (.github, test, scripts)"
+        - "ドキュメント (docs, README)"
+        - "その他"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 バグの概要
+      description: 何が起きたかを簡潔に説明してください。
+      placeholder: |
+        GRS エミュレータに接続して PTT を押下した際、音声再生が途切れるか開始されない。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 🔄 再現手順
+      description: バグを再現するための手順を記載してください。
+      placeholder: |
+        1. `make grs-run` で GRS を起動
+        2. `make vcs-run` で VCS を起動
+        3. ブラウザで http://127.0.0.1:8082 にアクセス
+        4. Channel 1 の Connect を押下
+        5. PTT ボタンを押下
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ 期待される動作
+      description: 本来どうなるべきだったかを記載してください。
+      placeholder: |
+        PTT を押している間、音声が安定してストリーミングされ、GRS 側で SQU ランプが点灯する。
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 📋 ログ / ターミナル出力
+      description: VCS / GRS コンソールまたはテスト実行時のエラーログがあれば記載してください。
+      render: shell
+      placeholder: |
+        2026/09/26 19:48:51 ERROR [ED-137] Failed to establish RTP session: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: 📌 追加情報
+      description: ネットワーク構成や PCAP ファイルなど、その他参考になる情報があれば記載してください。
+    validations:
+      required: false

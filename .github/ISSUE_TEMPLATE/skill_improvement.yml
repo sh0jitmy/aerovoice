@@ -1,37 +1,43 @@
-name: 💡 AI スキル改善提案 (Skill Improvement)
-description: AIエージェント用カスタムスキル (.claude/skills) の誤動作や改善提案を行います。
-title: "[SKILL]: スキル名 - 短い要約"
+name: "💡 AI Skill Improvement (English)"
+description: Suggest improvements or report anomalies for AI Agent custom skills (.agents/skills, .claude/skills).
+title: "[SKILL]: <Skill Name> - <Short summary>"
 labels: ["skill-improvement"]
 body:
   - type: markdown
     attributes:
       value: |
-        AI エージェント用カスタムスキルの改善やバグ修正について教えてください。
+        Please let us know about any malfunctions, missing rules, or improvements for custom AI Agent skills.
 
   - type: dropdown
     id: skill-name
     attributes:
-      label: 🎯 対象のスキル名
-      description: 修正が必要なカスタムスキルを選択してください。
+      label: 🎯 Target Skill Name
+      description: Select the custom skill that requires tuning.
       options:
         - agent-skill-evaluator
         - ai-skill-engineering
         - database-design
+        - documentation-governance
         - evidence-governance
         - git-strategy
         - github-copilot-review
+        - github-pr-creator
         - golang-design
         - golang-e2e-testing
+        - golang-htmx-frontend
         - golang-implementation
+        - golang-lint-governance
         - golang-observability
+        - golang-sqlite-governance
         - marketing-strategy
+        - multi-tier-e2e-testing
         - network-design
+        - observability-stack
         - openapi-design
         - openapi-design-review
         - product-management
         - quality-inspector
         - sakuracloud-solution-architect
-        - sakuracloud-terraform
         - software-architecture
         - sre-deployment
         - transaction-profiling-analyzer
@@ -41,43 +47,41 @@ body:
   - type: dropdown
     id: issue-type
     attributes:
-      label: 🚨 問題の種類
-      description: どのような不適合が発生しましたか？
+      label: 🚨 Issue Category
+      description: What type of discrepancy or issue occurred?
       options:
-        - "Under-triggering (必要な会話でスキルがロードされなかった)"
-        - "Over-triggering (無関係な会話でスキルが誤ってロードされた)"
-        - "Incorrect/Bad Advice (スキルが誤った設計・実装を提案した)"
-        - "Missing Rule (不足している重要なプラクティスがある)"
-        - "Outdated (スキルの内容が現在のコードベースと乖離している)"
+        - "Under-triggering (Skill was not loaded when it should have been)"
+        - "Over-triggering (Skill loaded unexpectedly in unrelated tasks)"
+        - "Incorrect/Bad Advice (Skill proposed outdated or suboptimal design/code)"
+        - "Missing Rule (Important practice or constraint is missing)"
+        - "Outdated (Skill references obsolete files or conventions)"
     validations:
       required: true
 
   - type: textarea
     id: description
     attributes:
-      label: 📝 問題の具体的な内容
-      description: どのような指示（プロンプト）の際に、どのような問題が発生したかを記述してください。
+      label: 📝 Details of the Issue
+      description: Describe what instructions/prompt caused the issue and the observed behavior.
       placeholder: |
-        指示プロンプト: 「〜の並行処理を書いて」
-        発生した挙動: エージェントがクローズ漏れのあるチャネルコードを提案した。
+        When modifying VCS HTMX handlers, the agent did not activate documentation-governance to update docs/manual.md.
     validations:
       required: true
 
   - type: textarea
-    id: expected-behavior
+    id: expected
     attributes:
-      label: 💡 期待される挙動 / あるべき指針
-      description: 本来、スキルがどのようにエージェントを誘導すべきだったかを記述してください。
+      label: ✅ Expected Agent Behavior
+      description: How should the AI agent behave in this situation?
       placeholder: |
-        期待される挙動: チャネルの所有者がクローズすることを明記し、goleak 等を用いたテスト作成を促すべき。
+        The agent should check documentation-governance and proactively update both README and manual.
     validations:
       required: true
 
   - type: textarea
-    id: proposed-fix
+    id: proposed-solution
     attributes:
-      label: 🔧 修正案
-      description: スキルファイルへの具体的な追加・修正案があれば記載してください。
-      render: markdown
+      label: 🛠️ Proposed Solution / Rule Addition
+      description: Specific suggestions for modifying SKILL.md.
     validations:
       required: false

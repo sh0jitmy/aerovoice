@@ -1,0 +1,87 @@
+name: "💡 AI スキル改善提案 (Skill Improvement - 日本語)"
+description: AIエージェント用カスタムスキル (.agents/skills, .claude/skills) の誤動作や改善提案を行います。
+title: "[SKILL]: スキル名 - 短い要約"
+labels: ["skill-improvement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        AI エージェント用カスタムスキルの改善やバグ修正について教えてください。
+
+  - type: dropdown
+    id: skill-name
+    attributes:
+      label: 🎯 対象のスキル名
+      description: 修正が必要なカスタムスキルを選択してください。
+      options:
+        - agent-skill-evaluator
+        - ai-skill-engineering
+        - database-design
+        - documentation-governance
+        - evidence-governance
+        - git-strategy
+        - github-copilot-review
+        - github-pr-creator
+        - golang-design
+        - golang-e2e-testing
+        - golang-htmx-frontend
+        - golang-implementation
+        - golang-lint-governance
+        - golang-observability
+        - golang-sqlite-governance
+        - marketing-strategy
+        - multi-tier-e2e-testing
+        - network-design
+        - observability-stack
+        - openapi-design
+        - openapi-design-review
+        - product-management
+        - quality-inspector
+        - sakuracloud-solution-architect
+        - software-architecture
+        - sre-deployment
+        - transaction-profiling-analyzer
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: 🚨 問題の種類
+      description: どのような不適合が発生しましたか？
+      options:
+        - "Under-triggering (必要な会話でスキルがロードされなかった)"
+        - "Over-triggering (無関係な会話でスキルが誤ってロードされた)"
+        - "Incorrect/Bad Advice (スキルが誤った設計・実装を提案した)"
+        - "Missing Rule (不足している重要なプラクティスがある)"
+        - "Outdated (スキルの内容が現在のコードベースと乖離している)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 問題の具体的な内容
+      description: どのような指示（プロンプト）の際に、どのような問題が発生したかを記述してください。
+      placeholder: |
+        VCS HTMX ハンドラーを変更した際、エージェントが documentation-governance を呼び出さずに manual.md を更新しなかった。
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: ✅ 期待されるエージェントの挙動
+      description: AI エージェントはどのように行動すべきでしたか？
+      placeholder: |
+        エージェントは documentation-governance を自律的にロードし、README とマニュアルを更新すべき。
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 🛠️ 改善案・追加すべきルール
+      description: SKILL.md に追記すべき具体的な記述案があれば記入してください。
+    validations:
+      required: false
