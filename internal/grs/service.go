@@ -60,14 +60,16 @@ type Service struct {
 	rxAudioLevelDB     float64
 
 	// Downlink Tx state
-	txSQUActive     bool
-	audioSource     string // "pilot_voice", "tone_1khz", "beep_400hz", "loopback", "simulated_voice", "telephony_voice"
-	voicePlayer     *media.VoicePromptPlayer
-	telephonyPlayer *media.VoicePromptPlayer
-	ptime           int
-	injJitterMs     int
-	injLossPct      int
-	silentDrop      bool
+	txSQUActive       bool
+	audioSource       string // "pilot_voice", "pilot_voice_ja", "tone_1khz", "beep_400hz", "loopback", "simulated_voice", "telephony_voice", "telephony_voice_ja"
+	voicePlayer       *media.VoicePromptPlayer
+	voicePlayerJa     *media.VoicePromptPlayer
+	telephonyPlayer   *media.VoicePromptPlayer
+	telephonyPlayerJa *media.VoicePromptPlayer
+	ptime             int
+	injJitterMs       int
+	injLossPct        int
+	silentDrop        bool
 
 	// Telephone
 	activePhoneCall *sip.ActiveCall
@@ -87,25 +89,29 @@ func NewService(cfg *config.GRSConfig) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	voicePlayer := media.NewVoicePromptPlayer(media.GetPilotVoiceSamples(), true)
+	voicePlayerJa := media.NewVoicePromptPlayer(media.GetPilotVoiceSamplesJA(), true)
 	telephonyPlayer := media.NewVoicePromptPlayer(media.GetTelephonyVoiceSamples(), true)
+	telephonyPlayerJa := media.NewVoicePromptPlayer(media.GetTelephonyVoiceSamplesJA(), true)
 	src := cfg.GRS.AudioSource
 	if src == "" {
 		src = "pilot_voice"
 	}
 
 	svc := &Service{
-		cfg:              cfg,
-		toneGen:          media.NewToneGenerator(),
-		voicePlayer:      voicePlayer,
-		telephonyPlayer:  telephonyPlayer,
-		audioSource:      src,
-		ptime:            cfg.GRS.DefaultPtime,
-		injJitterMs:      cfg.GRS.Impairment.JitterMs,
-		injLossPct:       cfg.GRS.Impairment.LossPercent,
-		audioBroadcaster: make(chan []int16, 64),
-		eventLogs:        make([]LogEntry, 0, 100),
-		ctx:              ctx,
-		cancel:           cancel,
+		cfg:               cfg,
+		toneGen:           media.NewToneGenerator(),
+		voicePlayer:       voicePlayer,
+		voicePlayerJa:     voicePlayerJa,
+		telephonyPlayer:   telephonyPlayer,
+		telephonyPlayerJa: telephonyPlayerJa,
+		audioSource:       src,
+		ptime:             cfg.GRS.DefaultPtime,
+		injJitterMs:       cfg.GRS.Impairment.JitterMs,
+		injLossPct:        cfg.GRS.Impairment.LossPercent,
+		audioBroadcaster:  make(chan []int16, 64),
+		eventLogs:         make([]LogEntry, 0, 100),
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 
 	// Initialize SIP Node for GRS
@@ -440,8 +446,12 @@ func (s *Service) generateAudioFrame(nSamples int) []int16 {
 	switch s.audioSource {
 	case "pilot_voice":
 		return s.voicePlayer.NextFrame(nSamples)
+	case "pilot_voice_ja":
+		return s.voicePlayerJa.NextFrame(nSamples)
 	case "telephony_voice":
 		return s.telephonyPlayer.NextFrame(nSamples)
+	case "telephony_voice_ja":
+		return s.telephonyPlayerJa.NextFrame(nSamples)
 	case "tone_1khz":
 		return s.toneGen.Generate1kHzTone(nSamples)
 	case "beep_400hz":

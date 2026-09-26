@@ -662,7 +662,25 @@ func (w *WebServer) handlePCAPWAV(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (w *WebServer) handleManual(rw http.ResponseWriter, r *http.Request) {
-	data, err := os.ReadFile("docs/manual.md")
+	lang := r.URL.Query().Get("lang")
+	fileName := "manual.md"
+	if lang == "ja" {
+		fileName = "manual.ja.md"
+	}
+	candidates := []string{
+		filepath.Join("docs", fileName),
+		filepath.Join("..", "docs", fileName),
+		filepath.Join("..", "..", "docs", fileName),
+	}
+	var data []byte
+	var err error
+	for _, p := range candidates {
+		//nolint:gosec // G304: static predefined paths
+		data, err = os.ReadFile(filepath.Clean(p))
+		if err == nil {
+			break
+		}
+	}
 	if err != nil {
 		http.Error(rw, "Manual file not found", http.StatusNotFound)
 		return

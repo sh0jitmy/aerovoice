@@ -438,9 +438,11 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
         </div>
 
         <div style="margin-bottom:12px;">
-          <label style="display:block; margin-bottom:6px; font-weight:bold;">Audio Signal Generator (送信音声):</label>
-          <label><input type="radio" name="audiosrc" value="pilot_voice" {{if or (eq .AudioSource "pilot_voice") (eq .AudioSource "")}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>パイロット音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
-          <label><input type="radio" name="audiosrc" value="telephony_voice" {{if eq .AudioSource "telephony_voice"}}checked{{end}} onchange="changeSource(this.value)"> 📞 <strong>電話音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)</strong></label><br>
+          <label style="display:block; margin-bottom:6px; font-weight:bold;">Audio Signal Generator (Downlink Audio):</label>
+          <label><input type="radio" name="audiosrc" value="pilot_voice" {{if or (eq .AudioSource "pilot_voice") (eq .AudioSource "")}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>Pilot Voice (EN: "Radio check, radio check. Testing 1 2 3 4 5")</strong></label><br>
+          <label><input type="radio" name="audiosrc" value="pilot_voice_ja" {{if eq .AudioSource "pilot_voice_ja"}}checked{{end}} onchange="changeSource(this.value)"> 🧑‍✈️ <strong>パイロット音声 (JA: "テスト、テスト。本日は晴天なり、本日は晴天なり。")</strong></label><br>
+          <label><input type="radio" name="audiosrc" value="telephony_voice" {{if eq .AudioSource "telephony_voice"}}checked{{end}} onchange="changeSource(this.value)"> 📞 <strong>Telephony Voice (EN: "This is an ED-137 telephone quality test...")</strong></label><br>
+          <label><input type="radio" name="audiosrc" value="telephony_voice_ja" {{if eq .AudioSource "telephony_voice_ja"}}checked{{end}} onchange="changeSource(this.value)"> 📞 <strong>電話音声 (JA: "テスト、テスト。本日は晴天なり、本日は晴天なり。")</strong></label><br>
           <label><input type="radio" name="audiosrc" value="tone_1khz" {{if eq .AudioSource "tone_1khz"}}checked{{end}} onchange="changeSource(this.value)"> 1 kHz Sine Tone</label><br>
           <label><input type="radio" name="audiosrc" value="beep_400hz" {{if eq .AudioSource "beep_400hz"}}checked{{end}} onchange="changeSource(this.value)"> 400 Hz ATC Beep</label><br>
           <label><input type="radio" name="audiosrc" value="simulated_voice" {{if eq .AudioSource "simulated_voice"}}checked{{end}} onchange="changeSource(this.value)"> Simulated Speech Formants</label><br>
@@ -448,7 +450,7 @@ var grsTemplate = template.Must(template.New("grs").Parse(`<!DOCTYPE html>
         </div>
 
         <hr style="border:0; border-top:1px solid var(--border);">
-        <h3 style="font-size:13px; color:var(--yellow); margin:6px 0;">⚡ Network Impairment Injection (人工障害注入)</h3>
+        <h3 style="font-size:13px; color:var(--yellow); margin:6px 0;">⚡ Network Impairment Injection (Fault Simulation)</h3>
         <div class="slider-row">
           <label style="width:140px;">Injected Jitter: <strong id="lbl-jitter">{{.InjJitterMs}}</strong> ms</label>
           <input type="range" id="rng-jitter" min="0" max="50" value="{{.InjJitterMs}}" onchange="updateImpairment()">

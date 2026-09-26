@@ -23,27 +23,45 @@ import (
 	"sync"
 )
 
-//go:embed assets/controller_voice.wav
-var controllerVoiceWAV []byte
+//go:embed assets/controller_voice_en.wav
+var controllerVoiceEnWAV []byte
 
-//go:embed assets/pilot_voice.wav
-var pilotVoiceWAV []byte
+//go:embed assets/pilot_voice_en.wav
+var pilotVoiceEnWAV []byte
 
-//go:embed assets/telephony_voice.wav
-var telephonyVoiceWAV []byte
+//go:embed assets/telephony_voice_en.wav
+var telephonyVoiceEnWAV []byte
+
+//go:embed assets/controller_voice_ja.wav
+var controllerVoiceJaWAV []byte
+
+//go:embed assets/pilot_voice_ja.wav
+var pilotVoiceJaWAV []byte
+
+//go:embed assets/telephony_voice_ja.wav
+var telephonyVoiceJaWAV []byte
 
 var (
-	controllerSamples []int16
-	pilotSamples      []int16
-	telephonySamples  []int16
-	voiceInitOnce     sync.Once
+	controllerSamplesEn []int16
+	pilotSamplesEn      []int16
+	telephonySamplesEn  []int16
+
+	controllerSamplesJa []int16
+	pilotSamplesJa      []int16
+	telephonySamplesJa  []int16
+
+	voiceInitOnce sync.Once
 )
 
 func initVoices() {
 	voiceInitOnce.Do(func() {
-		controllerSamples = extractPCMFromWAV(controllerVoiceWAV)
-		pilotSamples = extractPCMFromWAV(pilotVoiceWAV)
-		telephonySamples = extractPCMFromWAV(telephonyVoiceWAV)
+		controllerSamplesEn = extractPCMFromWAV(controllerVoiceEnWAV)
+		pilotSamplesEn = extractPCMFromWAV(pilotVoiceEnWAV)
+		telephonySamplesEn = extractPCMFromWAV(telephonyVoiceEnWAV)
+
+		controllerSamplesJa = extractPCMFromWAV(controllerVoiceJaWAV)
+		pilotSamplesJa = extractPCMFromWAV(pilotVoiceJaWAV)
+		telephonySamplesJa = extractPCMFromWAV(telephonyVoiceJaWAV)
 	})
 }
 
@@ -69,30 +87,57 @@ func extractPCMFromWAV(wavData []byte) []int16 {
 	return samples
 }
 
-// GetControllerVoiceSamples returns 8kHz 16-bit PCM for ATC controller test voice.
-// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
+// GetControllerVoiceSamples returns 8kHz 16-bit PCM for ATC controller English test voice.
+// "Tokyo Tower, AeroVoice 123. Radio check, radio check. One, two, three, four, five. How do you read?"
 func GetControllerVoiceSamples() []int16 {
 	initVoices()
-	out := make([]int16, len(controllerSamples))
-	copy(out, controllerSamples)
+	out := make([]int16, len(controllerSamplesEn))
+	copy(out, controllerSamplesEn)
 	return out
 }
 
-// GetPilotVoiceSamples returns 8kHz 16-bit PCM for aircraft pilot test voice.
-// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
+// GetPilotVoiceSamples returns 8kHz 16-bit PCM for aircraft pilot English test voice.
+// "Radio check, radio check. Testing, one, two, three, four, five. Reading you loud and clear."
 func GetPilotVoiceSamples() []int16 {
 	initVoices()
-	out := make([]int16, len(pilotSamples))
-	copy(out, pilotSamples)
+	out := make([]int16, len(pilotSamplesEn))
+	copy(out, pilotSamplesEn)
 	return out
 }
 
-// GetTelephonyVoiceSamples returns 8kHz 16-bit PCM for telephone audio quality test voice.
-// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
+// GetTelephonyVoiceSamples returns 8kHz 16-bit PCM for English telephone audio quality test voice.
+// "This is an ED-137 aeronautical telephone audio quality verification call. Testing, one, two, three, four, five."
 func GetTelephonyVoiceSamples() []int16 {
 	initVoices()
-	out := make([]int16, len(telephonySamples))
-	copy(out, telephonySamples)
+	out := make([]int16, len(telephonySamplesEn))
+	copy(out, telephonySamplesEn)
+	return out
+}
+
+// GetControllerVoiceSamplesJA returns 8kHz 16-bit PCM for ATC controller Japanese test voice.
+// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
+func GetControllerVoiceSamplesJA() []int16 {
+	initVoices()
+	out := make([]int16, len(controllerSamplesJa))
+	copy(out, controllerSamplesJa)
+	return out
+}
+
+// GetPilotVoiceSamplesJA returns 8kHz 16-bit PCM for aircraft pilot Japanese test voice.
+// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
+func GetPilotVoiceSamplesJA() []int16 {
+	initVoices()
+	out := make([]int16, len(pilotSamplesJa))
+	copy(out, pilotSamplesJa)
+	return out
+}
+
+// GetTelephonyVoiceSamplesJA returns 8kHz 16-bit PCM for telephone audio quality Japanese test voice.
+// "テスト、テスト。本日は晴天なり、本日は晴天なり。"
+func GetTelephonyVoiceSamplesJA() []int16 {
+	initVoices()
+	out := make([]int16, len(telephonySamplesJa))
+	copy(out, telephonySamplesJa)
 	return out
 }
 

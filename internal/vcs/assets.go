@@ -43,7 +43,10 @@ const IndexHTML = `<!DOCTYPE html>
             </div>
             <div class="audio-toggle" style="display:flex; gap:0.5rem;">
                 <button id="btn-manual" class="btn-secondary" onclick="toggleManualModal()" style="font-size:0.85rem; padding:0.4rem 0.8rem;">
-                    <span class="icon">&#128214;</span> 操作マニュアル
+                    <span class="icon">&#128214;</span> <span id="manual-btn-text">Operations Manual</span>
+                </button>
+                <button id="btn-lang-toggle" class="btn-secondary" onclick="toggleLanguage()" style="font-size:0.85rem; padding:0.4rem 0.8rem; font-weight:600;">
+                    <span class="icon">&#127760;</span> <span id="lang-indicator">JA</span>
                 </button>
                 <button id="btn-audio-init" class="btn-neon-small" onclick="toggleWebAudio()">
                     <span class="icon">&#128266;</span> Enable Audio
@@ -216,12 +219,45 @@ const IndexHTML = `<!DOCTYPE html>
     <div id="modal-manual" class="modal-overlay" style="display:none;" onclick="if(event.target === this) toggleManualModal()">
         <div class="modal-content glass">
             <div class="modal-header">
-                <h2>&#128214; Aerovoice 操作・検証マニュアル (Quick Guide)</h2>
-                <button class="btn-close" onclick="toggleManualModal()">&times;</button>
+                <h2 id="modal-title">&#128214; Aerovoice Operations & Verification Quick Guide</h2>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <div class="modal-lang-tabs" style="display:flex; gap:0.25rem;">
+                        <button id="modal-tab-en" class="btn-secondary active" onclick="switchModalLang('en')" style="font-size:0.75rem; padding:0.2rem 0.5rem;">English</button>
+                        <button id="modal-tab-ja" class="btn-secondary" onclick="switchModalLang('ja')" style="font-size:0.75rem; padding:0.2rem 0.5rem;">日本語</button>
+                    </div>
+                    <button class="btn-close" onclick="toggleManualModal()">&times;</button>
+                </div>
             </div>
             <div class="modal-body">
-                <h3>1. GRS と VCS の接続構成図 (ED-137C)</h3>
-                <div class="code-block" style="background:#0d1117; padding:1rem; border-radius:6px; font-family:monospace; font-size:0.8rem; line-height:1.4; overflow-x:auto; margin-bottom:1rem;">
+                <div id="modal-content-en">
+                    <h3>1. System Topology & ED-137C Communication Flow</h3>
+                    <div class="code-block" style="background:#0d1117; padding:1rem; border-radius:6px; font-family:monospace; font-size:0.8rem; line-height:1.4; overflow-x:auto; margin-bottom:1rem;">
+[ Browser Consoles (Chrome / Edge) ]
+  Left:  VCS Console (:8082) &lt;-- HTTP / WebSocket --&gt; VCS Server (:8082)
+  Right: GRS Testbench (:8081) &lt;-- HTTP ------------&gt; GRS Server (:8081)
+
+[ Inter-Server Protocols (EUROCAE ED-137C Compliance) ]
+  VCS (:5060/udp) &lt;==== SIP INVITE / 200 OK (Call Control) =====&gt; GRS (:5070/udp)
+  VCS (:5060/udp) &lt;==== SIP OPTIONS (5s Keep-alive Ping) =======&gt; GRS (:5070/udp)
+  VCS (:10000/udp) &lt;=== RTP G.711 + ED-137 Header Extensions ===&gt; GRS (:20000/udp)
+                        [ PTT=1, SQU, SQI, PTT-ID ]
+                    </div>
+
+                    <h3>2. Interactive 2-Screen Verification Guide (5-Minute Quickstart)</h3>
+                    <ol style="padding-left:1.5rem; margin-bottom:1.5rem; line-height:1.8;">
+                        <li><strong>Layout Setup:</strong> Arrange two browser windows side by side: Left for <code>http://127.0.0.1:8082</code> (VCS) and Right for <code>http://127.0.0.1:8081</code> (GRS). Click <strong>"🔊 Enable Audio"</strong> in the top-right corner to unmute audio synthesis.</li>
+                        <li><strong>Radio Transmission (PTT TX):</strong> In VCS <code>TWR Main</code>, click "<strong>Connect to GRS</strong>" &rarr; Press "<strong>PUSH TO TALK</strong>" or hold <strong>Spacebar</strong>. Notice the GRS VU meter deflection and hear clear audio from your speakers.</li>
+                        <li><strong>Radio Reception (SQU RX & FFT):</strong> In GRS, switch "<strong>Squelch Downlink</strong>" ON &rarr; VCS <strong>SQU indicator lights up</strong>, received tone plays through speakers, and the <strong>Canvas FFT Spectrum</strong> renders a sharp peak at 400Hz.</li>
+                        <li><strong>Direct Access Telephony (DA):</strong> Open the "<strong>Telephony (DA)</strong>" tab and click "<strong>Human Speech Test Call</strong>" or "<strong>1kHz Tone Test Call</strong>" &rarr; full-duplex session establishes with real-time jitter/RTT measurement.</li>
+                        <li><strong>Recordings Catalog:</strong> Open "<strong>Recordings</strong>" tab to preview and download ED-137 Volume 4 compliant WAV communication captures directly in your browser.</li>
+                        <li><strong>Node Supervision:</strong> Open "<strong>Supervision</strong>" tab for live SIP keepalive round-trip time (RTT) and station health monitoring.</li>
+                        <li><strong>PCAP Post-Incident Analysis:</strong> Drag & drop any <code>.pcap</code> capture into the "<strong>PCAP Analyzer</strong>" tab to decode ED-137 RTP headers and restore audio playback.</li>
+                    </ol>
+                </div>
+
+                <div id="modal-content-ja" style="display:none;">
+                    <h3>1. GRS と VCS の接続構成図 (ED-137C)</h3>
+                    <div class="code-block" style="background:#0d1117; padding:1rem; border-radius:6px; font-family:monospace; font-size:0.8rem; line-height:1.4; overflow-x:auto; margin-bottom:1rem;">
 [ ブラウザ画面 (Chrome / Edge) ]
   左: VCS コンソール (:8082) &lt;-- HTTP / WebSocket --&gt; VCS サーバー (:8082)
   右: GRS テストベンチ (:8081) &lt;-- HTTP ------------&gt; GRS サーバー (:8081)
@@ -231,28 +267,29 @@ const IndexHTML = `<!DOCTYPE html>
   VCS (:5060/udp) &lt;==== SIP OPTIONS (5秒死活監視 Ping) ===&gt; GRS (:5070/udp)
   VCS (:10000/udp) &lt;=== RTP G.711 + ED-137 拡張ヘッダ ===&gt; GRS (:20000/udp)
                         [ PTT=1, SQU, SQI, PTT-ID ]
+                    </div>
+
+                    <h3>2. 2画面インタラクティブ検証の手順 (5分)</h3>
+                    <ol style="padding-left:1.5rem; margin-bottom:1.5rem; line-height:1.8;">
+                        <li><strong>画面の準備:</strong> ブラウザを左右に2つ並べ、左で <code>http://127.0.0.1:8082</code> (VCS)、右で <code>http://127.0.0.1:8081</code> (GRS) を開きます。画面右上の <strong>「🔊 Enable Audio」</strong> をクリックして音声を有効化（ON）します（再度クリックすることでいつでも OFF に切り替えられます）。</li>
+                        <li><strong>無線発信 (PTT送信):</strong> 左画面の <code>TWR Main</code> で「<strong>Connect to GRS</strong>」をクリック &rarr; 「<strong>PUSH TO TALK</strong>」ボタンまたは <strong>スペースキー長押し</strong> で発信します。右画面（GRS）の VU メーターが振れ、PCスピーカーから受話音が流れます。</li>
+                        <li><strong>無線受信 (SQU受信 & FFT):</strong> 右画面（GRS）の「<strong>Squelch Downlink</strong>」スイッチを ON にします &rarr; 左画面（VCS）の <strong>SQU ランプが点灯</strong> し、スピーカーから受信音が鳴り、画面右の <strong>FFT スペクトラム（Canvas）</strong> に 400Hz の綺麗なピークが描画されます。</li>
+                        <li><strong>直通電話 (Telephony DA):</strong> 上部「<strong>Telephony (DA)</strong>」タブを開き、「<strong>1kHz Tone Test Call</strong>」または「<strong>300ms Echo Loopback Test</strong>」をクリックします &rarr; 全二重通話とジッタ測定が実行されます。</li>
+                        <li><strong>録音の確認 (Recordings):</strong> 上部「<strong>Recordings</strong>」タブを開くと、すべての交信・通話の WAV ファイルが一覧化されており、ブラウザ上でそのまま試聴・ダウンロードできます。</li>
+                        <li><strong>死活監視 (Supervision):</strong> 「<strong>Supervision</strong>」タブでは各局の SIP 死活状態とミリ秒単位の RTT（往復遅延）が常時モニタリングされます。</li>
+                        <li><strong>PCAP 事後診断 (PCAP Analyzer):</strong> 「<strong>PCAP Analyzer</strong>」タブに <code>.pcap</code> ファイルをドラッグ＆ドロップすると、ED-137 拡張ヘッダーのタイムライン解析と音声復元が行われます。</li>
+                    </ol>
                 </div>
 
-                <h3>2. 2画面インタラクティブ検証の手順 (5分)</h3>
-                <ol style="padding-left:1.5rem; margin-bottom:1.5rem; line-height:1.8;">
-                    <li><strong>画面の準備:</strong> ブラウザを左右に2つ並べ、左で <code>http://127.0.0.1:8082</code> (VCS)、右で <code>http://127.0.0.1:8081</code> (GRS) を開きます。画面右上の <strong>「🔊 Enable Audio」</strong> をクリックして音声を有効化（ON）します（再度クリックすることでいつでも OFF に切り替えられます）。</li>
-                    <li><strong>無線発信 (PTT送信):</strong> 左画面の <code>TWR Main</code> で「<strong>Connect to GRS</strong>」をクリック &rarr; 「<strong>PUSH TO TALK</strong>」ボタンまたは <strong>スペースキー長押し</strong> で発信します。右画面（GRS）の VU メーターが振れ、PCスピーカーから受話音が流れます。</li>
-                    <li><strong>無線受信 (SQU受信 & FFT):</strong> 右画面（GRS）の「<strong>Squelch Downlink</strong>」スイッチを ON にします &rarr; 左画面（VCS）の <strong>SQU ランプが点灯</strong> し、スピーカーから受信音が鳴り、画面右の <strong>FFT スペクトラム（Canvas）</strong> に 400Hz の綺麗なピークが描画されます。</li>
-                    <li><strong>直通電話 (Telephony DA):</strong> 上部「<strong>Telephony (DA)</strong>」タブを開き、「<strong>1kHz Tone Test Call</strong>」または「<strong>300ms Echo Loopback Test</strong>」をクリックします &rarr; 全二重通話とジッタ測定が実行されます。</li>
-                    <li><strong>録音の確認 (Recordings):</strong> 上部「<strong>Recordings</strong>」タブを開くと、すべての交信・通話の WAV ファイルが一覧化されており、ブラウザ上でそのまま試聴・ダウンロードできます。</li>
-                    <li><strong>死活監視 (Supervision):</strong> 「<strong>Supervision</strong>」タブでは各局の SIP 死活状態とミリ秒単位の RTT（往復遅延）が常時モニタリングされます。</li>
-                    <li><strong>PCAP 事後診断 (PCAP Analyzer):</strong> 「<strong>PCAP Analyzer</strong>」タブに <code>.pcap</code> ファイルをドラッグ＆ドロップすると、ED-137 拡張ヘッダーのタイムライン解析と音声復元が行われます。</li>
-                </ol>
-
                 <div style="text-align:right;">
-                    <button class="btn-neon-small" onclick="toggleManualModal()">閉じる (Close)</button>
+                    <button class="btn-neon-small" onclick="toggleManualModal()">Close / 閉じる</button>
                 </div>
             </div>
         </div>
     </div>
 
     <footer class="app-footer">
-        <p>AEROVOICE VCS Prototype &bull; ED-137C Radio & Telephony Verification &bull; Pure Go & Web Audio API &bull; <a href="/docs/manual" target="_blank" style="color:var(--color-cyan);">詳細マニュアル (docs/manual.md)</a></p>
+        <p>AEROVOICE VCS Prototype &bull; ED-137C Radio & Telephony Verification &bull; Pure Go & Web Audio API &bull; <a id="footer-manual-link" href="/docs/manual?lang=en" target="_blank" style="color:var(--color-cyan);">Operations Manual (docs/manual.md)</a></p>
     </footer>
 
     <script src="/static/app.js"></script>
@@ -528,6 +565,7 @@ body {
     cursor: pointer;
 }
 .btn-secondary:hover { background: #4b5563; }
+.btn-secondary.active { background: var(--color-cyan); color: #0a0e17; font-weight: bold; border-color: var(--color-cyan); }
 .btn-danger { background: #dc2626; border: none; color: #fff; padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; }
 
 /* Spectrum Canvas */
@@ -780,6 +818,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(loadCommLogs, 3000); // Periodic sync fallback
 
     const urlParams = new URLSearchParams(window.location.search);
+    const initialLang = urlParams.get('lang') || localStorage.getItem('aerovoice_lang') || 'en';
+    applyLanguage(initialLang);
+
     const initialTab = urlParams.get('tab') || window.location.hash.replace('#', '');
     if (initialTab) {
         showTab(initialTab);
@@ -1245,6 +1286,53 @@ function toggleManualModal() {
     } else {
         modal.style.display = 'none';
     }
+}
+
+let currentLang = 'en';
+
+function switchModalLang(lang) {
+    const enDiv = document.getElementById('modal-content-en');
+    const jaDiv = document.getElementById('modal-content-ja');
+    const btnEn = document.getElementById('modal-tab-en');
+    const btnJa = document.getElementById('modal-tab-ja');
+    const title = document.getElementById('modal-title');
+    if (lang === 'ja') {
+        if (enDiv) enDiv.style.display = 'none';
+        if (jaDiv) jaDiv.style.display = 'block';
+        if (btnEn) btnEn.classList.remove('active');
+        if (btnJa) btnJa.classList.add('active');
+        if (title) title.innerHTML = '&#128214; Aerovoice 操作・検証マニュアル (Quick Guide)';
+    } else {
+        if (enDiv) enDiv.style.display = 'block';
+        if (jaDiv) jaDiv.style.display = 'none';
+        if (btnEn) btnEn.classList.add('active');
+        if (btnJa) btnJa.classList.remove('active');
+        if (title) title.innerHTML = '&#128214; Aerovoice Operations & Verification Quick Guide';
+    }
+}
+
+function applyLanguage(lang) {
+    currentLang = lang;
+    try { localStorage.setItem('aerovoice_lang', lang); } catch (e) {}
+    const ind = document.getElementById('lang-indicator');
+    const btnText = document.getElementById('manual-btn-text');
+    const footerLink = document.getElementById('footer-manual-link');
+    if (ind) ind.innerText = (lang === 'en' ? 'JA' : 'EN');
+    if (btnText) btnText.innerText = (lang === 'ja' ? '操作マニュアル' : 'Operations Manual');
+    if (footerLink) {
+        if (lang === 'ja') {
+            footerLink.href = '/docs/manual?lang=ja';
+            footerLink.innerText = '詳細マニュアル (docs/manual.ja.md)';
+        } else {
+            footerLink.href = '/docs/manual?lang=en';
+            footerLink.innerText = 'Operations Manual (docs/manual.md)';
+        }
+    }
+    switchModalLang(lang);
+}
+
+function toggleLanguage() {
+    applyLanguage(currentLang === 'en' ? 'ja' : 'en');
 }
 
 // Comm Logs Management
