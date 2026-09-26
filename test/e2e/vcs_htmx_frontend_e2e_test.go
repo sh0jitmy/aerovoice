@@ -182,6 +182,19 @@ func TestVCS_HTMX_Frontend_E2E(t *testing.T) {
 		assert.Contains(t, html, `id="recordings-container"`)
 		assert.Contains(t, html, `hx-get="/ui/components/recordings-table"`)
 
+		// Check i18n & Manual Elements
+		assert.Contains(t, html, `id="btn-lang-toggle"`)
+		assert.Contains(t, html, `id="modal-content-en"`)
+		assert.Contains(t, html, `id="modal-content-ja"`)
+
+		statusManualEN, manualEN := httpGet(t, baseURL+"/docs/manual?lang=en")
+		assert.Equal(t, http.StatusOK, statusManualEN)
+		assert.Contains(t, manualEN, "Aerovoice Operations & Verification Manual")
+
+		statusManualJA, manualJA := httpGet(t, baseURL+"/docs/manual?lang=ja")
+		assert.Equal(t, http.StatusOK, statusManualJA)
+		assert.Contains(t, manualJA, "Aerovoice 操作・検証マニュアル")
+
 		// Check Static Assets delivery
 		statusCSS, cssBody := httpGet(t, baseURL+"/static/style.css")
 		assert.Equal(t, http.StatusOK, statusCSS)

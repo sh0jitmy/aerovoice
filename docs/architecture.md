@@ -18,13 +18,15 @@ Author: [YOUR_NAME]
 
 # Aerovoice System Architecture & Technical Specifications
 
-本書は、**Aerovoice（EUROCAE ED-137 航空管制音声通信検証スイート）** のシステム全体アーキテクチャ、コンポーネント構成、データフロー、およびテスト階層について詳述します。
+[English](architecture.md) | [日本語](architecture.ja.md)
+
+This document details the overall system architecture, component design, data flow, and testing tiers for **Aerovoice**, an open-source EUROCAE ED-137 Aeronautical Voice Communication verification suite.
 
 ---
 
-## 1. 全体アーキテクチャ概要
+## 1. Overall System Architecture
 
-Aerovoice は管制卓（**VCS**）と地上無線局エミュレータ（**GRS**）の2つの独立した Pure Go プロセスで構成され、SIP/SDP による呼制御および RTP / ED-137 ヘッダー拡張による低遅延音声伝送を行います。
+Aerovoice consists of two independent Pure Go processes: the controller console (**VCS**) and the Ground Radio Station emulator (**GRS**). They establish call control via SIP/SDP and stream low-latency VoIP audio using RTP with EUROCAE ED-137 header extensions.
 
 ```mermaid
 graph TD
@@ -59,42 +61,44 @@ graph TD
 
 ---
 
-## 2. コアコンポーネント設計
+## 2. Core Component Design
 
-### 2.1 エントリーポイント構成
+### 2.1 Entrypoint Binaries
 - **`cmd/vcs`**:
-  - 管制卓（VCS: Voice Communication System）コンソールのメインプロセス。
-  - HTMX ダッシュボード（`:8082`）、SIP エージェント（`:5060/udp`）、RTP メディアエンジン（`:10000〜/udp`）を起動。
+  - Main binary for the controller Voice Communication System console.
+  - Launches the HTMX dashboard (`:8082`), SIP User Agent (`:5060/udp`), and RTP Media Engine (`:10000~/udp`).
 - **`cmd/grs-emulator`**:
-  - 対向の地上無線基地局（GRS: Ground Radio Station）シミュレータ。
-  - GRS テストベンチ（`:8081`）、SIP 無線局 UAS（`:5070/udp`）、RTP エコーバック/トーン生成器（`:20000〜/udp`）を起動。
+  - Ground Radio Station emulator binary.
+  - Launches the GRS Web Testbench (`:8081`), SIP Radio UAS (`:5070/udp`), and RTP Echo/Tone Generator (`:20000~/udp`).
 
-### 2.2 スタンドアロン HTMX Web コンソール (`internal/vcs`, `internal/grs`)
-- **`//go:embed` 組み込み**:
-  - HTML テンプレート、HTMX ライブラリ、およびモダンなダークモード CSS を Go バイナリ内に完全内包。外部 CDN や Node.js/npm なしで完全にオフライン動作。
-- **Hypermedia-Driven レンダリング & Web Audio**:
-  - 周波数選択、PTT/スケルチ状態、電話発着信、および死活監視ステータスをリアルタイム部分更新。
-  - Web Audio API（AudioContext）による 60FPS FFT 音声スペクトラム（0〜4kHz）と VU メーター描画。
-  - 完全無音化（Audio OFF）：マイク入力トラックとオーディオコンテキストを物理停止し、暗騒音漏れをゼロ化。
+### 2.2 Standalone HTMX Web Consoles (`internal/vcs`, `internal/grs`)
+- **Embedded Static Assets (`//go:embed`)**:
+  - HTML templates, local HTMX library (`static/htmx.min.js`), and avionics-style CSS are compiled directly into Go binaries. Works 100% offline without Node.js or CDN dependencies.
+- **Hypermedia-Driven Rendering & Web Audio**:
+  - Frequency selection, PTT/SQU states, telephone dialing, and supervision metrics are dynamically updated via HTMX partial swaps.
+  - The browser Web Audio API samples microphone inputs and streams audio, driving a 60 FPS Canvas FFT audio spectrum (0–4 kHz) and VU meters.
+  - Full silence mode (Audio OFF) physically halts microphone tracks and suspends the audio context to eliminate background speaker hiss.
+- **Dual-Language i18n**:
+  - Integrated language toggle supporting English and Japanese interfaces, quickstart guides, and documentation.
 
-### 2.3 航空通信プロトコル層 (`internal/ed137`, `internal/sip`, `internal/media`)
-- **ED-137 SIP シグナリング (`internal/sip`)**:
-  - `sipgo` を用いた Pure Go SIP 呼制御。INVITE / 200 OK / BYE によるセッション確立および SDP ネゴシエーション（G.711 μ-law / A-law, `ptime:20`）。
-- **ED-137 RTP ヘッダー拡張 (`internal/ed137`)**:
-  - Profile `0x0167` による PTT Type（Normal / Priority / Emergency）、PTT-ID、Downlink Squelch（SQU）、Signal Quality Index（SQI 0〜100）の完全送受信。
-- **動的適応型ジッタバッファ (`internal/media/jitter_buffer.go`)**:
-  - ネットワーク遅延・パケット順序逆転・揺らぎを吸収するキュー制御（10ms〜120ms 動的調整）。
-- **録音クォータ管理 (`internal/media/recorder.go`)**:
-  - PTT 送信時および SQU 受信時に自動で 8kHz 16-bit Linear PCM WAV ファイルを生成。
-  - 最大録音件数（デフォルト100件）および最大録音時間（デフォルト5分）の上限管理と自動ローテーション。
+### 2.3 Aeronautical Protocol Stack (`internal/ed137`, `internal/sip`, `internal/media`)
+- **ED-137 SIP Signaling (`internal/sip`)**:
+  - Pure Go SIP call control using `sipgo`. Handles INVITE / 200 OK / BYE session establishment and SDP negotiation (G.711 μ-law / A-law, `ptime:10` and `ptime:20`).
+- **ED-137 RTP Header Extensions (`internal/ed137`)**:
+  - Profile `0x0167` serialization for PTT Type (Normal / Priority / Emergency), PTT-ID, Downlink Squelch (SQU), and Signal Quality Index (SQI 0–100).
+- **Dynamic Playout & Jitter Buffer (`internal/media/jitter_buffer.go`)**:
+  - Reorders out-of-sequence packets and absorbs network jitter with user-tunable depth (10 ms – 120 ms).
+- **Audio Catalog & Retention Cleaner (`internal/media/recorder.go`)**:
+  - Automatically records all PTT transmissions and SQU receptions into 8 kHz 16-bit Linear PCM WAV files.
+  - Enforces quota limits (default 100 recordings, max 5 minutes per recording) and retention policies.
 
-### 2.4 PCAP 事後診断エンジン (`internal/pcap`)
-- `pcapgo` を用いた CGO 非依存の PCAP/PCAPNG 解析。
-- VoIP コール・ED-137 拡張ヘッダー（PTT/SQU/SQI）の時系列抽出と音声 WAV 復元。
+### 2.4 PCAP Post-Incident Analyzer (`internal/pcap`)
+- Pure Go PCAP parsing using `pcapgo` (zero CGO/libpcap dependency).
+- Extracts SIP call flows, ED-137 extension headers (PTT/SQU/SQI), and reconstructs G.711 payloads into playable WAV audio.
 
 ---
 
-## 3. 多層 E2E テストフレームワーク
+## 3. Multi-Tier E2E Testing Framework
 
 ```mermaid
 graph LR
@@ -105,7 +109,7 @@ graph LR
         L2["make aerovoice-test<br/>- ED-137 SIP / SDP<br/>- RTP Header Extension<br/>- Radio FSM (IDLE/TX/RX)"]
     end
     subgraph "Layer 3: Browser UI E2E"
-        L3["make vcs-frontend-e2e<br/>- Headless Chrome Automation<br/>- VCS HTMX UI Verification<br/>- HTML Report & Screenshots"]
+        L3["make vcs-frontend-e2e<br/>- Headless Chrome Automation<br/>- VCS HTMX UI Verification<br/>- Bilingual HTML Reports & Snapshots"]
     end
     
     L1 --> L2 --> L3

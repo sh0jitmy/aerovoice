@@ -37,6 +37,21 @@ func TestVoicePrompts_EmbeddedSamples(t *testing.T) {
 		t.Fatal("expected telephony voice samples, got none")
 	}
 
+	controllerJA := GetControllerVoiceSamplesJA()
+	if len(controllerJA) == 0 {
+		t.Fatal("expected Japanese controller voice samples, got none")
+	}
+
+	pilotJA := GetPilotVoiceSamplesJA()
+	if len(pilotJA) == 0 {
+		t.Fatal("expected Japanese pilot voice samples, got none")
+	}
+
+	telephonyJA := GetTelephonyVoiceSamplesJA()
+	if len(telephonyJA) == 0 {
+		t.Fatal("expected Japanese telephony voice samples, got none")
+	}
+
 	player := NewVoicePromptPlayer(pilot, true)
 	frame := player.NextFrame(160)
 	if len(frame) != 160 {

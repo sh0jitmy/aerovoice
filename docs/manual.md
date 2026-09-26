@@ -1,502 +1,292 @@
-# Aerovoice 操作・検証マニュアル (User & Verification Manual)
+# Aerovoice Operations & Verification Manual
 
-EUROCAE ED-137C Radio & Telephony 検証用 OSS プロトタイプ「Aerovoice」の操作手順、VCS・GRS 接続アーキテクチャ、および各種検証シナリオを解説するマニュアルです。
+[English](manual.md) | [日本語](manual.ja.md)
+
+This manual provides comprehensive instructions, operational workflows, topology diagrams, and verification scenarios for **Aerovoice**, an open-source Air Traffic Management (ATM) voice communication verification suite implementing the **EUROCAE ED-137C** standard.
 
 ---
 
-## 1. システム概要と接続構成図
+## 1. System Overview & Connection Topology
 
-Aerovoice は、管制官が操作する **VCS（Voice Communication System）** と、滑走路脇などのアンテナ局である **GRS（Ground Radio Station）** の 2 つの独立したプログラムが、標準規格 **EUROCAE ED-137C** に則って UDP 通信を行う構成になっています。
+Aerovoice consists of two independent Pure Go processes communicating via UDP over standard aviation VoIP protocols (SIP/SDP and RTP with ED-137 header extensions):
+1. **VCS (Voice Communication System)**: The controller working position console.
+2. **GRS (Ground Radio Station)**: The ground radio transceiver base station emulator.
 
-### 1.1 VCS (Voice Communication System) 側システム構成図
+### 1.1 VCS (Voice Communication System) Architecture
 
-管制官が操作するタッチパネル卓・コンソールサーバーの内部構成です。
+The controller console runs as an in-memory Pure Go server with an embedded, zero-npm HTMX interface:
 
 ```mermaid
 flowchart TB
-    subgraph Browser_VCS["管制官ブラウザ (Web UI)"]
-        VCS_UI["管制卓画面 (:8082)<br/>(HTMX + Tailwind CSS)"]
-        VCS_Audio["ブラウザ Web Audio API<br/>(マイク集音 & VU/FFT表示)"]
+    subgraph Browser_VCS["Controller Browser (Web Console)"]
+        VCS_UI["Controller UI (:8082)<br/>(HTMX + Vanilla CSS)"]
+        VCS_Audio["Browser Web Audio API<br/>(Mic Sampling, FFT & VU)"]
     end
 
-    subgraph VCS_Host["Aerovoice VCS サーバー (:8082)"]
-        VCS_Web["Web サーバー (:8082)<br/>(/ui/*, /api/*)"]
-        VCS_WS["WebSocket ハブ<br/>(/ws/audio, /ws/events)"]
-        VCS_Core["VCS コア制御<br/>・Channel FSM 状態遷移<br/>・Telephony (DA電話) 制御<br/>・Audio Recorder (WAV 8kHz)"]
-        VCS_SIP["SIP エージェント (:5060/udp)<br/>・呼制御 (INVITE, BYE)<br/>・死活監視 (OPTIONS Ping)"]
-        VCS_RTP["RTP メディアエンジン (:10000~/udp)<br/>・動的ジッタバッファ (10-120ms)<br/>・G.711 PCMA/PCMU エンコード<br/>・ED-137 送話ヘッダー付与"]
+    subgraph VCS_Host["Aerovoice VCS Server (:8082)"]
+        VCS_Web["Web Server (:8082)<br/>(/ui/*, /api/*)"]
+        VCS_WS["WebSocket Hub<br/>(/ws)"]
+        VCS_Core["VCS Core Engine<br/>• Channel FSM State Machine<br/>• Telephony DA Controller<br/>• Audio Recorder (WAV 8kHz)"]
+        VCS_SIP["SIP User Agent (:5060/udp)<br/>• Call Control (INVITE/BYE)<br/>• Node Supervision (OPTIONS)"]
+        VCS_RTP["RTP Media Engine (:10000~/udp)<br/>• Dynamic Jitter Buffer (10-120ms)<br/>• G.711 PCMA/PCMU Codec<br/>• ED-137 Header Serialization"]
     end
 
-    subgraph GRS_Remote["【対向】GRS 無線基地局"]
-        Remote_SIP["SIP 待受ポート (:5070/udp)"]
-        Remote_RTP["RTP 待受ポート (:20000~/udp)"]
+    subgraph GRS_Remote["Remote GRS Station"]
+        Remote_SIP["SIP Port (:5070/udp)"]
+        Remote_RTP["RTP Port (:20000~/udp)"]
     end
 
     VCS_UI <-->|HTTP GET/POST| VCS_Web
-    VCS_Audio <-->|WebSocket 双方向音声| VCS_WS
+    VCS_Audio <-->|WebSocket Audio & Events| VCS_WS
     VCS_Web --> VCS_Core
     VCS_WS <--> VCS_Core
 
     VCS_Core <--> VCS_SIP
     VCS_Core <--> VCS_RTP
 
-    VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| Remote_SIP
-    VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| Remote_RTP
+    VCS_SIP <===>|"① Call Signaling (SIP:5060 ⇄ 5070)"| Remote_SIP
+    VCS_RTP <===>|"② ED-137 Audio Stream (RTP:10000~ ⇄ 20000~)"| Remote_RTP
 ```
 
-### 1.2 GRS (Ground Radio Station) 側システム構成図
+### 1.2 GRS (Ground Radio Station) Architecture
 
-空港滑走路脇に設置された無線中継基地局を模擬するテストベンチの内部構成です。
+The GRS emulator simulates ground radio transceiver towers deployed along airport runways:
 
 ```mermaid
 flowchart TB
-    subgraph Browser_GRS["無線局管理ブラウザ (Web UI)"]
-        GRS_UI["GRS テストベンチ画面 (:8081)<br/>(HTMX + レスポンシブUI)"]
-        GRS_Audio["ブラウザ Web Audio API<br/>(生スピーカー受話 & FFT解析)"]
+    subgraph GRS_Host["Aerovoice GRS Emulator (:8081)"]
+        GRS_Web["Web Testbench (:8081)<br/>(HTML/JS + Audio Spectrum)"]
+        GRS_SIP["SIP UAS Server (:5070/udp)<br/>• Session Management (200 OK)<br/>• Supervision Responder (200 OK)"]
+        GRS_RTP["RTP Transceiver (:20000~/udp)<br/>• G.711 Encode/Decode<br/>• ED-137 Header Parsing"]
+        GRS_Impair["Network Impairment Engine<br/>• Jitter Buffer Simulation<br/>• Packet Loss Simulation<br/>• Silent Drop Outage Injection"]
+        GRS_Audio["Signal & Voice Generator<br/>• Pilot English Voice Prompt<br/>• Pilot Japanese Voice Prompt<br/>• 1kHz Tone / 400Hz Beep<br/>• FIFO Loopback Echo Buffer"]
     end
 
-    subgraph GRS_Host["Aerovoice GRS エミュレータ (:8081)"]
-        GRS_Web["Web サーバー (:8081)<br/>(/api/snapshot, /api/control)"]
-        GRS_WS["WebSocket 音声配信<br/>(/ws/audio)"]
-        GRS_Core["GRS コア制御<br/>・SQU スケルチ制御<br/>・音声ソース切替 (トーン/模擬音声)<br/>・300ms ループバック通話"]
-        GRS_Impair["ネットワーク障害注入器<br/>・ジッタ注入 (0〜100ms)<br/>・パケットロス (0〜50%)<br/>・Silent Drop (無応答障害)"]
-        GRS_SIP["SIP エージェント (:5070/udp)<br/>・自動着呼応答 (200 OK)<br/>・OPTIONS 死活監視応答"]
-        GRS_RTP["RTP メディアエンジン (:20000~/udp)<br/>・ED-137 ヘッダー解析 (PTT, SQU, SQI)<br/>・G.711 デコード / 送出"]
+    subgraph VCS_Remote["Remote VCS Controller"]
+        VCS_SIP_R["VCS SIP Agent (:5060/udp)"]
+        VCS_RTP_R["VCS RTP Engine (:10000~/udp)"]
     end
 
-    subgraph VCS_Remote["【対向】VCS 管制卓"]
-        Remote_VCS_SIP["SIP 送受信ポート (:5060/udp)"]
-        Remote_VCS_RTP["RTP 送受信ポート (:10000~/udp)"]
-    end
+    GRS_Web <--> GRS_SIP
+    GRS_Web <--> GRS_Audio
+    GRS_Web <--> GRS_Impair
 
-    Speaker["PC スピーカー音声出力"]
-
-    GRS_UI <-->|HTTP GET/POST| GRS_Web
-    GRS_Core -->|リアルタイム音声データ| GRS_WS
-    GRS_WS -->|WebSocket| GRS_Audio
-    GRS_Audio --> Speaker
-
-    GRS_Web --> GRS_Core
-    GRS_Core <--> GRS_Impair
-    GRS_Impair <--> GRS_SIP
-    GRS_Impair <--> GRS_RTP
-
-    Remote_VCS_SIP <===>|"① 呼制御 & 死活監視 (SIP:5060 ⇄ 5070)"| GRS_SIP
-    Remote_VCS_RTP <===>|"② ED-137 音声通信 (RTP:10000~ ⇄ 20000~)"| GRS_RTP
+    GRS_SIP <===>|"SIP Signaling (5070 ⇄ 5060)"| VCS_SIP_R
+    GRS_Audio --> GRS_Impair --> GRS_RTP
+    GRS_RTP <===>|"ED-137 Audio Stream (20000~ ⇄ 10000~)"| VCS_RTP_R
 ```
 
-### 1.3 ポート割り当て一覧と設定ファイル (YAML / 環境変数)
+### 1.3 Port Assignment & Protocol Reference Table
 
-Aerovoice の全ポート番号・ホストIP・SIP URI は、設定ファイル（`configs/vcs.yaml`、`configs/grs.yaml`）または環境変数から柔軟に変更可能です。
-
-| コンポーネント | デフォルトポート | プロトコル | 設定項目 (`configs/*.yaml`) | 用途 |
-| :--- | :--- | :--- | :--- | :--- |
-| **VCS Web Console** | `8082` | HTTP / WebSocket | `http_port: 8082` | 管制官用 Web UI 画面、FFT メトリクス配信 |
-| **GRS Testbench** | `8081` | HTTP / WebSocket | `http_port: 8081` | 地上無線局エミュレータ用 Web UI 画面 |
-| **VCS SIP Agent** | `5060` | UDP | `sip_port: 5060` | ED-137 呼制御シグナリング（クライアント/サーバー） |
-| **GRS SIP Agent** | `5070` | UDP | `sip_port: 5070` | ED-137 呼制御シグナリング（対向局サーバー） |
-| **VCS RTP** | `10000`〜 | UDP | `rtp_port_start: 10000` | 音声送受信（G.711 A-law/μ-law + ED-137 拡張） |
-| **GRS RTP** | `20000`〜 | UDP | `rtp_port_start: 20000` | 音声送受信（G.711 A-law/μ-law + ED-137 拡張） |
-| **VCS 録音保持件数** | `100` 件 | - | `recording.max_recordings: 100` | 保持する最大録音件数（上限: 1,000件、超過時は最古ファイルを自動FIFO削除） |
-| **VCS 1件最大時間** | `300` 秒 (5分) | - | `recording.max_duration_seconds: 300` | 1通話・1交信あたりの最大録音時間（上限: 1,800秒 / 30分、到達時は正常クリップ保存） |
-
-#### 容量計算とストレージ占有量（PCM 8kHz 16-bit モノラル）
-Aerovoice の録音音声は、航空管制標準の PCM 8kHz / 16-bit モノラル形式（16,000 バイト/秒 ≈ 16 KB/秒 ≈ 0.96 MB/分）で WAV 保存されます。
-
-- **1件あたりの最大容量**:
-  - デフォルト（5分 / 300秒）: **約 4.8 MB**
-  - ハードリミット（30分 / 1,800秒）: **約 28.8 MB**
-- **全体ストレージ最大占有量**:
-  - デフォルト（100件 × 5分）: **最大 約 480 MB**（安全に 500MB 以内に収まる設計）
-  - ハードリミット（1,000件）: **最大 約 4.8 GB〜28.8 GB**
-
-#### 設定ファイルによる変更例
-```yaml
-# configs/vcs.yaml
-node_id: "vcs-01"
-http_port: 8082
-sip_port: 5060
-rtp_port_start: 10000
-rtp_host: "127.0.0.1"        # バインド先IPアドレス
-vcs_sip_uri: "sip:101@127.0.0.1:5060"
-grs_sip_uri: "sip:100@127.0.0.1:5070"
-
-# 録音ガバナンス設定
-recording:
-  max_recordings: 100        # 最大保存件数（デフォルト: 100件、ハードリミット: 1,000件）
-  max_duration_seconds: 300  # 1件あたりの最大録音時間（デフォルト: 300秒=5分、ハードリミット: 1,800秒=30分）
-```
-
-#### 環境変数によるオーバーライド
-コンテナ運用時などは、設定ファイルを変更せずに環境変数でオーバーライド可能です：
-- `AEROVOICE_VCS_HTTP_PORT=9082`
-- `AEROVOICE_VCS_SIP_PORT=5062`
-- `AEROVOICE_VCS_RTP_HOST=0.0.0.0`
-- `AEROVOICE_VCS_REC_MAX_RECORDINGS=200`
-- `AEROVOICE_VCS_REC_MAX_DURATION_SECONDS=600`
-- `AEROVOICE_GRS_HTTP_PORT=9081`
+| Component | Default Port | Protocol | Purpose / Specification |
+| :--- | :--- | :--- | :--- |
+| **VCS Web Console** | `8082/tcp` | HTTP / WebSocket | Controller console UI, HTMX partials, Web Audio API stream |
+| **VCS SIP Agent** | `5060/udp` | SIP (RFC 3261) | Radio call establishment, DA dialing, Supervision keepalive ping |
+| **VCS RTP Engine** | `10000~/udp` | RTP / ED-137 | G.711 μ-law audio transmission and reception with profile `0x0167` |
+| **GRS Web Testbench** | `8081/tcp` | HTTP | Ground radio testbench UI, impairment sliders, audio generators |
+| **GRS SIP UAS** | `5070/udp` | SIP (RFC 3261) | Ground radio SIP answering endpoint and options ping responder |
+| **GRS RTP Transceiver** | `20000~/udp` | RTP / ED-137 | Radio downlink transmission, uplink reception, loopback echo |
 
 ---
 
-## 2. 2画面インタラクティブ環境の立ち上げ
+## 2. Getting Started (Interactive Dual-Screen Verification)
 
-### 2.1 サーバーの起動
-ターミナルから以下のコマンドを実行します。VCS と GRS が自動的にバックグラウンド起動します。
+### 2.1 Starting the Services
+
+Open two terminal windows:
+
 ```bash
-make demo-vcs
-```
-*(個別に起動したい場合は `make grs-run` と `make vcs-run` を別ターミナルで実行してください)*
+# Terminal 1: Start Ground Radio Station (GRS) Emulator
+make grs-run
 
-### 2.2 ブラウザの配置
-ブラウザ（Google Chrome / Microsoft Edge 推奨）でウィンドウを 2 つ開き、左右に並べます。
-
-```
-+------------------------------------+------------------------------------+
-|  左画面: VCS コンソール             |  右画面: GRS テストベンチ           |
-|  http://127.0.0.1:8082             |  http://127.0.0.1:8081             |
-|  (管制官のオペレーション卓)        |  (滑走路脇の無線中継基地局)        |
-+------------------------------------+------------------------------------+
+# Terminal 2: Start Voice Communication System (VCS) Console
+make vcs-run
 ```
 
-1. **左画面** で [**http://127.0.0.1:8082**](http://127.0.0.1:8082) を開きます。
-2. **右画面** で [**http://127.0.0.1:8081**](http://127.0.0.1:8081) を開きます。
-3. **音声の自動有効化と手動制御**:
-   - **自動有効化（Auto Activation）**: 「📡 Connect to GRS」ボタンや電話の DA 発信ボタンをクリックした際、ブラウザの Web Audio API が自動的に初期化・起動して **「🔊 Audio ON」** に切り替わります。**一度 PTT を押す必要はなく、接続直後から GRS からの受話音声がスピーカーより即座に聞こえます。**
-   - **手動切替**: 画面右上の **「🔊 Audio ON / 🔇 Audio OFF」** ボタンをクリックすることで、いつでも手動で ON/OFF を切り替えられます。
-   - **完全無効化（Complete Disable）機能**: 「Audio OFF」に切り替えると、Web Audio ハードウェア（AudioContext）が完全に破棄・クローズされ、マイク入力トラックも物理停止します。マイクの暗騒音ループバックやヒスノイズは一切発生せず、完全な無音状態（ノイズゼロ）になります。
+*(Alternatively, run `make demo` to automatically spawn both consoles).*
 
-### 2.3 Windows 環境でのビルドと個別起動
+### 2.2 Dual-Screen Window Layout
 
-Windows 環境でも Pure Go（`CGO_ENABLED=0`）のため、一切の外部依存関係なしに動作します。
+Position two browser windows side by side:
+- **Left Window (VCS Console)**: [http://127.0.0.1:8082](http://127.0.0.1:8082)
+- **Right Window (GRS Testbench)**: [http://127.0.0.1:8081](http://127.0.0.1:8081)
 
-#### A. ビルド手順
-- **macOS / Linux からクロスコンパイル**:
-  ```bash
-  make build-windows
-  # bin/dist/ 配下に vcs-windows-amd64.exe, grs-windows-amd64.exe が生成されます
-  ```
-- **Windows (PowerShell) で直接ビルド**:
-  ```powershell
-  $env:CGO_ENABLED="0"
-  go build -trimpath -ldflags="-s -w" -o bin\vcs.exe .\cmd\vcs
-  go build -trimpath -ldflags="-s -w" -o bin\grs-emulator.exe .\cmd\grs-emulator
-  ```
-- **Windows (コマンドプロンプト CMD) で直接ビルド**:
-  ```cmd
-  set CGO_ENABLED=0
-  go build -trimpath -ldflags="-s -w" -o bin\vcs.exe .\cmd\vcs
-  go build -trimpath -ldflags="-s -w" -o bin\grs-emulator.exe .\cmd\grs-emulator
-  ```
+![VCS Dashboard Screenshot](images/vcs_htmx_dashboard.png)
 
-#### B. 起動手順
-PowerShell または CMD でターミナルを2つ開き、以下を実行します：
-```powershell
-# ターミナル 1 (GRS 地上無線局エミュレータ)
-.\bin\grs-emulator.exe -config configs\grs.yaml
+### 2.3 Audio Enablement & Browser Autoplay Policy
 
-# ターミナル 2 (VCS 管制卓コンソール)
-.\bin\vcs.exe -config configs\vcs.yaml
-```
-
-> [!TIP]
-> 初回起動時に Windows Defender ファイアウォールの通信許可ダイアログが表示された場合は、「プライベートネットワーク」での通信を許可してください（ローカルホスト間の SIP:5060/5070 および RTP:10000/20000 UDP 通信に使用されます）。
+Modern browsers restrict automated audio playback until user interaction:
+1. Click the **"🔊 Enable Audio"** button in the top-right corner of the VCS console.
+2. The button highlights cyan, initializing the Web Audio `AudioContext` and preparing the FFT spectrum analyzer.
+3. Clicking the button again immediately mutes and suspends the audio engine, stopping any audio leaks.
 
 ---
 
-## 3. ステップ・バイ・ステップ操作手順
+## 3. Step-by-Step Verification Scenarios
 
-### シナリオ 1: 無線を発信する (日本語音声で PTT 送話テスト)
-管制官がマイクの送信スイッチ（PTT: Push-To-Talk）を押して航空機に向けて発信するシナリオです。マイクが接続されていない環境でも、**クリアな日本語テスト音声（「テスト、テスト。本日は晴天なり、本日は晴天なり。」）** で自動送話テストが行えます。
+### Scenario 1: Radio Transmission (Controller PTT TX)
+
+Verifies air-ground radio transmission from the controller to the aircraft.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as あなた (VCS卓)
+    actor Controller as Controller (VCS)
     participant VCS as VCS (:8082)
     participant GRS as GRS (:8081)
-    actor Speaker as PCスピーカー
+    actor Speaker as PC Speakers
 
-    User->>VCS: 「Connect to GRS」をクリック
-    VCS->>GRS: SIP INVITE (周波数 118.100MHz 接続要求)
-    GRS-->>VCS: SIP 200 OK (接続承認)
+    Controller->>VCS: Click "Connect to GRS"
+    VCS->>GRS: SIP INVITE (Frequency 118.100 MHz)
+    GRS-->>VCS: SIP 200 OK (Connection Accepted)
 
-    User->>VCS: 「🗣️ Send ATC Voice」をクリック (または PTT 長押し)
-    VCS->>GRS: ED-137 RTP 送信 (PTT=1, 日本語テスト音声 PCM 8kHz)
-    GRS->>GRS: 画面の VU メーターが振れ、ログに PTT 検出が表示
-    GRS->>Speaker: PCスピーカーから「テスト、テスト。本日は晴天なり...」がクリアに再生
-    Note over VCS,GRS: 音声終了後、自動的に PTT が解除されます
+    Controller->>VCS: Click "🗣️ Send ATC Voice" (or hold Spacebar)
+    VCS->>GRS: ED-137 RTP Stream (PTT=1, Audio PCM 8kHz)
+    GRS->>GRS: VU Meter deflects, PTT detected in logs
+    GRS->>Speaker: Clear audio plays: "Tokyo Tower, AeroVoice 123. Radio check..."
+    Note over VCS,GRS: PTT automatically releases after speech transmission completes (~10.4s)
 ```
 
-1. **左画面（VCS）** の `118.100 MHz TWR Main` カードにある **「📡 Connect to GRS」** をクリックします。
-   - カード右上のステータスが `connected`（緑色）に変わります。
-2. カード内の **「🗣️ Send ATC Voice (Speech TX)」** ボタンを **クリック** します。
-   - ボタンが `🗣️ Speaking (ATC Voice)...` に変わり、**PTT ランプ（赤）** が点灯します。
-   - **右画面 (GRS)**: PTT インジケータが点灯し、VU メーターが振れ、右画面の `🔊 Speaker: ON` を有効にしていれば日本語テスト音声がクリアに再生されます。
-   - 音声が終了すると自動的に PTT が OFF（解除）されます（約8.5秒間の落ち着いた自然な無線発話完了後に自動復帰）。
-3. 通常の **「PUSH TO TALK (PTT)」** ボタン（またはスペースキー長押し）でも、マイク非接続時は日本語テスト音声がストリーミング送信されます。
+1. In the **Left Window (VCS)**, locate the `118.100 MHz TWR Main` card and click **"📡 Connect to GRS"**.
+   - The status badge turns green (`connected`).
+2. Click the **"🗣️ Send ATC Voice (Speech TX)"** button.
+   - The button switches to `🗣️ Speaking (ATC Voice)...` and the **PTT lamp (red)** illuminates.
+   - In the **Right Window (GRS)**, the PTT indicator lights up, the VU meter deflects, and clear English radio check speech is heard.
+   - Once transmission concludes (~10.4 seconds), the PTT key automatically releases.
+3. Holding the **"PUSH TO TALK (PTT)"** button or **Spacebar** also initiates transmission.
 
 ---
 
-### シナリオ 2: 航空機からの電波を受信する (パイロット日本語音声受話 & FFT スペクトラム)
-パイロットが送信した電波を GRS アンテナが受信し、スケルチ（SQU: スピーカーの消音を解除する信号）を開いて管制官に音声を届けるシナリオです。**落ち着いた自然な速度の日本語テスト音声（「テスト、テスト。本日は晴天なり、本日は晴天なり。」）** が、パケット重なりや音割れのない最新スケジューリングキューによりクリアに受話されます。
+### Scenario 2: Radio Reception (Aircraft Downlink SQU & FFT Spectrum)
 
-1. **右画面（GRS）** の送信音声設定で **「🧑‍✈️ パイロット音声 (テスト、テスト。本日は晴天なり、本日は晴天なり。)」** が選択されていることを確認します（デフォルトで選択済み）。
-2. 右画面の中央にある **「Squelch (SQU) Control」** のボタンをクリックして **ON (Transmitting)** にします。
-3. **左画面（VCS）** を確認します：
-   - チャンネルカードの **「SQU ランプ（緑）」** が点灯し、受信信号強度（SQI: 100）が表示されます。
-   - スピーカーからクリアな日本語テスト音声（「テスト、テスト。本日は晴天なり、本日は晴天なり。」）が流れます。
-   - 画面右側の **「Real-Time Audio Spectrum (Canvas)」** に、人の声特有の **豊かな声帯フォルマント（母音・子音の複数ピーク）** が 60FPS でリアルタイム描画されます。
-   - チャンネルカード内の **「Jitter Buffer」スライダー** を動かすことで、音声のバッファリング深さを 10ms 〜 120ms でリアルタイムに調整できます。
-4. 右画面（GRS）の SQUELCH を **OFF** に戻すと、スケルチが閉じ、受話音声が止まります。
+Verifies downlink reception of aircraft transmission initiated by pilot radio.
 
-#### 🔁 (応用試験) GRS Loopback Echo による無線エコー通話試験
-1. **右画面（GRS）** の Sound Source で **「🔁 Loopback Echo (VCS Audio)」** を選択し、**Squelch を ON** にしておきます。
-2. **左画面（VCS）** で **「🗣️ Send ATC Voice」**（または PTT）を押して話しかけます。
-3. GRS 側の内部 FIFO キューが VCS の音声を蓄積し、途中で止まることなく **話した内容がそっくりそのまま VCS 側のスピーカーに折り返しエコーバック** されます。
-4. VCS 側の送話が終了した後も、蓄積されたエコーが最後まで綺麗に流れきり、完了後に自動で無音に戻ります。
+1. In the **Right Window (GRS)**, ensure the audio source is set to **"🧑‍✈️ Pilot Voice (EN: Radio check...)"** (default).
+2. Toggle the **"Squelch (SQU) Control"** switch to **ON (Transmitting)**.
+3. Observe the **Left Window (VCS)**:
+   - The **SQU lamp (green)** illuminates and signal quality index displays `SQI: 100`.
+   - Clear pilot radio speech plays through your speakers.
+   - The **Real-Time Audio Spectrum (Canvas)** renders sharp acoustic peaks and formant lines at 60 FPS.
+   - Move the **"Jitter Buffer" slider** between `10ms` and `120ms` to dynamically adjust playout buffer depth.
+4. In GRS, toggle SQUELCH back to **OFF** to close the receiver.
 
----
-
-### シナリオ 3: 直通電話をかける (Telephony DA & 日本語音声による通話品質試験)
-管制塔（TWR）と進入管制所（APP）の間でワンタッチで内線通話を行うダイレクトアクセス（DA）機能のテストです。
-
-1. **左画面（VCS）** の上部ナビゲーションで **「Telephony (DA)」** タブをクリックします。
-2. **「🗣️ Human Speech Test Call」** ボタンをクリックします。
-   - 対向 GRS への SIP 電話発信が自動で行われ、通話中（connected / mode: speech）になります。
-   - 通話相手に向けて、日本語テスト音声（「テスト、テスト。本日は晴天なり、本日は晴天なり。」）が送出され、遅延やジッタ測定値がリアルタイムに更新されます。
-3. **「Hangup Call (終話)」** をクリックすると通話が終了します。
-4. 従来の規格基準トーンである **「1kHz Tone Test Call」** や **「300ms Echo Loopback Test」** も引き続き選択可能です。
+#### 🔁 Advanced Verification: GRS Loopback Echo
+1. In GRS, select **"🔁 Loopback Echo (VCS Audio)"** under Audio Signal Generator and switch **Squelch to ON**.
+2. In VCS, transmit speech using **"🗣️ Send ATC Voice"** or PTT.
+3. The internal FIFO queue in GRS captures the audio and echoes it back in real time to the VCS speaker without stuttering.
 
 ---
 
-### シナリオ 4: 録音の再生・ダウンロード (Recordings タブ)
-ED-137 Volume 4（録音規格）に準拠し、すべての無線交信・電話通話はバックグラウンドで自動的に WAV 音声ファイルとして保管されています。
+### Scenario 3: Ground-to-Ground Telephony (Direct Access Intercom)
 
-1. **左画面（VCS）** の上部ナビゲーションで **「Recordings」** タブをクリックします。
-2. 先ほどシナリオ 1〜3 で行った無線交信や電話通話の履歴がテーブル形式で一覧表示されています。
-3. テーブル内の **再生プレイヤー（`<audio>`）** の再生ボタンを押すと、交信音声をブラウザ上で即座に確認できます。
-4. **「Download」** ボタンをクリックすると、WAV ファイルをローカル PC にダウンロードできます。
+Verifies full-duplex telephone communications between air traffic control facilities.
 
-#### 録音リソースガバナンスと容量保護機構
-Aerovoice のレコーダーは、長時間の PTT 誤操作や大量通話によるディスク容量枯渇を防止するため、以下の安全機構が自動稼働しています：
-- **1件あたりの最大録音時間制限**:
-  - デフォルト **5分（300秒 / 約4.8MB）** で上限ガード。万一 PTT が押しっぱなしになっても、5分経過時点でサンプル蓄積を安全にキャップし、正常な WAV ファイルとして保存を完了します（設定上限: 30分 / 1,800秒）。
-- **最大保持件数の自動ローテーション (FIFO)**:
-  - デフォルト **100件（最大約480MB）** を維持。101件目の新規録音が完了した瞬間に、ディスク上で最も古い WAV ファイルが物理削除（自動ローテーション）されます（設定上限: 1,000件）。
-- **起動時ストレージ健全化**:
-  - サーバー再起動時にもディスクスキャンを行い、設定された最大件数（100件）を超える古い WAV ファイルが存在する場合は即座に自動パージされ、ディスク枯渇を未然に防ぎます。
+1. In the VCS console, open the **"Telephony (DA)"** tab.
+2. Click the **"Human Speech Test Call"** button.
+3. An ED-137 SIP dialog establishes immediately:
+   - The telephone panel displays active call state with remote URI `sip:speech-test@127.0.0.1:5070`.
+   - Automated speech plays through the telephone channel.
+   - The **RTT latency** and **packet jitter** meters update continuously.
+4. Click **"Hang Up"** to terminate the call.
 
 ---
 
-### シナリオ 5: 基地局の死活監視 (Supervision タブ)
-ED-137 Volume 5 規格に準拠した SIP 死活監視をリアルタイムに確認できます。
+### Scenario 4: Dynamic Jitter Buffering & Network Impairment Injection
 
-1. **左画面（VCS）** の上部ナビゲーションで **「Supervision」** タブをクリックします。
-2. 各 GRS 基地局に対してバックグラウンドで 5 秒おきに `SIP OPTIONS` Keepalive が送出されており、**RTT（応答往復時間：0.5ms など）** および死活状態（Online/Offline）が監視されています。
-3. *(応用試験)* **右画面（GRS）** で **「Silent Drop (Keepalive無応答障害)」** のスイッチを ON にすると、VCS 側の Supervision パネルでノードが赤色（Offline）に変わり、障害検知アラートの動作を確認できます。
+Verifies system resilience against IP network degradation (jitter and packet loss).
 
----
-
-### シナリオ 6: 事後 VoIP パケット診断 (PCAP Analyzer タブ)
-Wireshark 等で取得した `.pcap` / `.pcapng` ファイルから、ED-137 固有の制御情報と音声を復元・解析します。
-
-1. **左画面（VCS）** の上部ナビゲーションで **「PCAP Analyzer」** タブをクリックします。
-2. ドラッグ＆ドロップエリアに `.pcap` または `.pcapng` ファイルをドロップします（またはクリックして選択）。
-3. Go 言語の内蔵パーサーがパケットを解析し、以下の診断結果が瞬時に出力されます：
-   - パケット総数、RTP パケット数、平均ジッタ、パケットロス率
-   - ED-137 拡張ヘッダー（PTT ON/OFF, SQU, SQI, PTT-ID）の時系列タイムライン
-   - 音声ペイロードから復元された WAV ファイルのインライン再生・ダウンロードリンク
+1. In the **Right Window (GRS)**, locate the **"⚡ Network Impairment Injection"** card.
+2. Drag the **"Injected Jitter" slider** to `30ms` and **"Injected Loss" slider** to `10%`.
+3. In VCS, observe the real-time stream statistics card in the Radio Console:
+   - `Jitter` metric reflects the injected network variations.
+   - The dynamic jitter buffer adjusts its FIFO playout threshold to maintain clean, glitch-free audio reproduction.
 
 ---
 
-### シナリオ 7: プロトコル通信ログの確認 (Comm Logs タブ & GRS Event Log)
-VCS と GRS の双方で、送受信される SIP シグナリング、ED-137 RTP パケット、死活監視 OPTIONS などの通信ログをリアルタイムに確認できます。
+### Scenario 5: Legal Audio Recording & In-Browser Playback (ED-137 Volume 4)
 
-1. **左画面（VCS）**:
-   - 上部ナビゲーションの **「📜 Comm Logs」** タブをクリックします。
-   - ターミナル画面上に、`[SIP]`, `[ED-137]`, `[RTP]`, `[SYS]` ごとに色分けされたプロトコル送受信ログがリアルタイムに流れます。
-   - 上部の **フィルターボタン（All / SIP / ED-137 / RTP / SYS）** で表示を絞り込んだり、**「Clear Logs」** で消去できます。
-   - 他のタブ（Radio や Telephony）を開いているときでも、画面最下部の **「📡 LIVE COMM LOG」ティッカーバー** に最新の通信イベントが1行でリアルタイム更新されます（クリックすると Comm Logs タブへ移動）。
-2. **右画面（GRS）**:
-   - 画面下部の **「📋 GRS Protocol & Event Log」** コンソールに、受信した SIP INVITE/OPTIONS、送出した SQU/RTP パケットなどのログがバッジ付きでリアルタイム表示されます。
+Verifies automated legal recording of aeronautical communications.
+
+1. Open the **"Recordings"** tab in the VCS console.
+2. A complete catalog of all recorded PTT, SQU, and telephone sessions is displayed.
+3. Each entry lists timestamp, duration, channel ID, and audio format (8 kHz 16-bit Linear PCM).
+4. Click the **"▶ Play"** button on any record to listen immediately within the browser, or click **"⬇ Download WAV"** to export the uncompressed audio file.
 
 ---
 
-## 4. 画面 UI リファレンス
+### Scenario 6: Node Supervision & Keepalive Monitoring (ED-137 Volume 5)
 
-### 4.1 VCS 管制卓コンソール (`http://127.0.0.1:8082`)
+Verifies continuous health checks of remote radio equipment.
 
-![Aerovoice VCS HTMX Dashboard](docs/images/vcs_htmx_dashboard.png)
-
-VCS コンソールは、Node.js や npm などの外部ランタイムに一切依存しない、Go言語標準の `//go:embed` と HTMX（`static/js/htmx.min.js`）による軽量・堅牢なスタンドアロン Web UI です。
-管制官のタッチパネルオペレーション卓を模した直感的なダークテーマ UI で設計されています。
-
-#### ① ヘッダー制御部
-- **タイトル & バージョン表示**: 現在稼働中の Aerovoice VCS バージョン（`internal/version` と連動）を表示。
-- **操作マニュアルリンク**: 本マニュアル（`docs/manual.md`）へのダイレクトリンク。
-- **🔊 Audio ON / 🔇 Audio OFF 切替トグル**:
-  - ブラウザの Web Audio API（AudioContext）を物理制御します。
-  - **Audio ON**: マイク入力の集音および受信パケットのスピーカー再生を有効化。
-  - **Audio OFF**: Web Audio ハードウェアを完全に破棄・解放し、マイク入力トラックを物理停止。暗騒音やノイズの漏れを電気的・物理的に 100% 遮断（完全 disable）。
-
-#### ② VCS 各タブ画面の詳細説明
-
-##### 1. 📻 Radio Console タブ (無線チャンネル卓)
-航空無線周波数（`118.100 MHz TWR Main`, `120.500 MHz APP Backup` 等）の接続・通話卓です。
-
-![VCS Radio Console Tab](docs/images/vcs_tab_radio.png)
-
-- **Connect to GRS ボタン**: 対象周波数の対向 GRS 基地局と SIP INVITE/200 OK ハンドシェイクを実行し、RTP 送受信セッションを確立します。
-- **PUSH TO TALK (PTT) ボタン**: 航空機への送信スイッチ。長押しで PTT=1 の音声パケットを送信（キーボードのスペースキー長押しでも操作可能）。マイク未接続時は日本語テスト音声を自動送出します。
-- **🗣️ Send ATC Voice (Speech TX) ボタン**: クリックするだけで、航空無線のリアルなプロフェッショナル速度で発話された日本語テスト音声（「テスト、テスト。本日は晴天なり、本日は晴天なり...」）を約8.5秒間自動送話し、終了後に自動解除します。
-- **PTT ランプ (赤)**: 自卓が無線送信中（PTT ON）であることを点灯表示します。
-- **SQU ランプ (緑)**: 対向の地上無線局が航空機電波を受信中（Squelch 開）であることを点灯表示します。
-- **Jitter Buffer スライダー**: 受信パケットのジッタ吸収キュー遅延（10ms〜120ms）を動的調整します。
-- **Audio Spectrum (Canvas 描画)**: 送話または受話音声の 0〜4kHz リアルタイム FFT 周波数スペクトラムおよび VU レベルを 60FPS で描画します。
-
-##### 2. 📞 Telephony DA タブ (ダイレクトアクセス電話)
-管制卓間や関連部署（Tower、Approach、Radar等）とのワンクリック直通電話（Direct Access / DA）パネルです。
-
-![VCS Telephony DA Tab](docs/images/vcs_tab_telephony.png)
-
-- **DA 連絡先一覧カード**: 登録された内線番号や対向局に対して、ワンクリックで全二重（Full-Duplex）通話を発信・切断します。
-- **🗣️ Human Speech Test Call**: 日本語音声アナウンスによる電話回線の音質・疎通確認テスト。
-- **🔊 1kHz Tone Test Call**: 1000Hz 純音による回線歪み・遅延測定テスト。
-- **🔁 Loopback Echo Call**: 発話した音声を 300ms 遅延させて折り返すエコーバック通話テスト。
-
-##### 3. 🎙️ Recordings タブ (録音カタログ・再生)
-ED-137 Volume 4 規格に準拠した交信音声の記録・管理カタログです。
-
-![VCS Recordings Tab](docs/images/vcs_tab_recordings.png)
-
-- **自動ロギング**: PTT 送話、SQU 受信、DA 電話通話が完了するたびに、自動で PCM 8kHz 16-bit WAV ファイルが生成されます。
-- **一覧テーブル**: 録音日時、周波数/対象チャンネル、通話時間、ファイルサイズがリアルタイムに表示されます。
-- **ブラウザ内インライン再生**: 録音一覧の再生ボタンから、ブラウザ上で直接 WAV 音声を再生・視聴できます。
-- **WAV ダウンロード**: 証跡や事後解析用に音声ファイルをローカル PC にダウンロード可能。
-- **FIFO 自動ローテーション**: デフォルト最大100件（1件最大5分）で自動管理され、ストレージ容量を約 480MB 以内に安全に自律制御します。
-
-##### 4. 📡 Supervision タブ (ノード常時死活監視)
-ED-137 Volume 5 規格に準拠した地上無線基地局（GRS）の常時死活監視パネルです。
-
-![VCS Supervision Tab](docs/images/vcs_tab_supervision.png)
-
-- **SIP OPTIONS 監視**: 5秒間隔で自動送出される死活監視 Ping に対する応答状態をリアルタイム表示。
-- **RTT（往復遅延）測定**: 基地局とのネットワーク応答時間（例: `0.32 ms`, `0.12 ms`）をミリ秒単位で表示。
-- **Online / Offline 視覚表示**: 正常時は緑色バッジ（Online）、通信途絶時（Silent Drop 障害等）は赤色バッジ（Offline）に即座に切り替わります。
-- **監視カウンタ**: チェック総数（Checks）および障害検知数（Fails）を一覧表示。
-
-##### 5. 🔍 PCAP Analyzer タブ (事後パケット診断)
-Wireshark 等でキャプチャされた `.pcap` / `.pcapng` ファイルの事後解析・音声復元ツールです。
-
-![VCS PCAP Analyzer Tab](docs/images/vcs_tab_pcap.png)
-
-- **ドラッグ＆ドロップ入力**: PCAP ファイルをブラウザ上にドラッグ＆ドロップするだけで解析が始まります。
-- **プロトコル解析指標**: パケット総数、RTP パケット数、平均ジッタ、パケットロス率を算出。
-- **ED-137 タイムライン**: PTT ON/OFF、SQU 状態、SQI（電波品質 0〜100）の推移を時系列で可視化。
-- **音声復元再生**: パケット内の RTP ペイロードから音声を自動合成し、ブラウザ上で即座に再生可能。
-
-##### 6. 📜 Comm Logs タブ (シグナリング & 通信ログ)
-全シグナリングおよびメディア通信イベントのリアルタイムターミナルコンソールです。
-
-![VCS Comm Logs Tab](docs/images/vcs_tab_logs.png)
-
-- **プロトコル色分けバッジ**: `[SIP]`, `[ED-137]`, `[RTP]`, `[SYS]` ごとに視覚的に識別可能。
-- **方向タグ表示**: `[TX]`（送信）、`[RX]`（受信）、`[INT]`（内部イベント）を明確に区分。
-- **フィルタボタン**: All / SIP / ED-137 / RTP / SYS のワンクリック表示切り替え。
-- **Clear Logs ボタン**: 蓄積されたログ表示をリセット。
-
-#### ③ Live Comm Ticker (画面最下部)
-- 全タブ共通で画面最下部に常時表示される 1 行ステータスバー。
-- どのタブを操作していても、最新の通信イベント（呼接続、PTT 検出、SQU 切替、死活監視 Ping 等）がリアルタイムにストリーミング表示されます。
-- クリックすると即座に「📜 Comm Logs」タブへジャンプします。
+1. Open the **"Supervision"** tab in the VCS console.
+2. Cards display real-time SIP status, total OPTIONS keepalive count, and round-trip latency (RTT in ms).
+3. **Simulating Outage**: In GRS under **"Supervision & Fault Simulation"**, toggle **"Silent Drop (Simulate GRS Offline)"** to **ON**.
+4. In VCS, observe the supervision indicator detect unanswered OPTIONS pings and transition the node to `OFFLINE / UNREACHABLE`.
 
 ---
 
-### 4.2 GRS テストベンチ (`http://127.0.0.1:8081`)
+### Scenario 7: Post-Incident PCAP Inspection & Audio Recovery
 
-![GRS Main Dashboard](docs/images/grs_dashboard.png)
+Verifies forensic investigation of recorded network traffic.
 
-空港滑走路脇に設置された無線中継基地局を模擬するテストベンチ UI です。
-VCS コンソールと同様にタブナビゲーション（`?tab=radio`, `?tab=telephony`, `?tab=supervision`, `?tab=logs`）を搭載し、各テスト画面を分離・切り替えて操作できます。
-
-#### GRS 各タブ画面の詳細説明
-
-##### 1. 📻 Radio Transceiver タブ (無線送受信機 & 障害注入)
-VCS との対向無線交信および音声信号生成・人工障害注入を行う中核テストパネルです。
-
-![GRS Radio Transceiver Tab](docs/images/grs_tab_radio.png)
-
-- **📥 Uplink Receiver (VCS からの受信)**:
-  - **PTT Indicator**: VCS 管制卓から届いた PTT 送信状態を赤色パルスでリアルタイム表示。PTT 種別（Normal/Priority）や PTT-ID を表示します。
-  - **Live Speaker Audio Output**: VCS から届いた音声を PC スピーカーで直接再生するかどうかのトグル（🔇 OFF / 🔊 ON）。
-  - **Rx Audio Level**: 受信レベルメーター（dBFS）および動的バー表示。
-  - **Rx 統計**: Rx Jitter（リアルタイムジッタ値）、Peak Jitter、Loss Rate（パケットロス率）、Packets Received（総受信パケット数）を表示。
-- **📤 Downlink Transmitter (VCS への送信)**:
-  - **Squelch (SQU) Control**: 航空機からの受信電波を模擬し、VCS に向けて音声送出を開始（🔘 SQU ON）/ 停止（⚪ SQU OFF）します。
-  - **Audio Signal Generator (送信音声ソース)**:
-    - 🧑‍✈️ **パイロット音声 (日本語)**: 「テスト、テスト。本日は晴天なり、本日は晴天なり。」の落ち着いた自然な日本語無線発話。
-    - 📞 **電話音声 (日本語)**: 電話品質試験用の日本語アナウンス音声。
-    - **1 kHz Sine Tone**: 歪み・減衰試験用 1000Hz 正弦波。
-    - **400 Hz ATC Beep**: 航空管制ビープ音。
-    - **Simulated Speech Formants**: 母音フォルマント模擬音声。
-    - 🔁 **Loopback Echo (VCS Audio)**: VCS から受信した音声を FIFO キューで蓄積し、途切れなく折り返しエコー送信する試験モード。
-  - **⚡ Network Impairment Injection (人工障害注入)**:
-    - **Injected Jitter (0〜50 ms)**: 送信パケットにランダム遅延を注入し、VCS 側のジッタバッファ適応性を検証。
-    - **Injected Loss (0〜30 %)**: 送信パケットを一定確率で破棄し、パケットロス耐性を検証。
-
-##### 2. 📞 Telephony Test タブ (電話呼制御試験)
-VCS 管制卓に対するダイレクトアクセス電話の発信をシミュレートするテストパネルです。
-
-![GRS Telephony Test Tab](docs/images/grs_tab_telephony.png)
-
-- **Auto-Answer Mode**: 1 kHz Tone Responder モードによる自動着信応答ステータス。
-- **📞 Call VCS Station (101) ボタン**: VCS 管制卓（Station 101）に向けて ED-137 SIP INVITE を発信し、内線電話の着信テストを行います。
-
-##### 3. 🩺 Supervision & Fault Simulation タブ (死活監視 & 障害シミュレーション)
-VCS 側からの ED-137 Volume 5 死活監視に対する応答および回線途絶障害の注入パネルです。
-
-![GRS Supervision & Faults Tab](docs/images/grs_tab_supervision.png)
-
-- **SIP OPTIONS Heartbeat**: VCS からの 5秒間隔 OPTIONS Ping に対する 200 OK 応答ステータス。
-- **⚠️ Simulate Silent Drop (Offline) ボタン**:
-  - 有効にすると、GRS は受信した SIP OPTIONS パケットをサイレントに破棄（無応答化）します。
-  - VCS 側が 3回の再送タイムアウト後にノードを `Offline` と判定し、アラートを発報する障害復旧テストが行えます。
-
-##### 4. 📋 Protocol Event Logs タブ (リアルタイムプロトコルログ)
-GRS 局が送受信した全プロトコルイベント（SIP, ED-137, RTP）のリアルタイムコンソールです。
-
-![GRS Protocol Logs Tab](docs/images/grs_tab_logs.png)
-
-- **リアルタイム表示**: SIP OPTIONS Ping/200 OK、INVITE/BYE、RTP 送受信、PTT/SQU イベントをプロトコルバッジ付きで逐次記録。
-- **Auto-scroll 切替**: 新規ログ到達時の自動スクロール有効/無効切替。
-- **Clear Logs ボタン**: コンソールのログ表示をワンクリックでクリア。
+1. Open the **"PCAP Analyzer"** tab in the VCS console.
+2. Drag and drop any `.pcap` capture file into the upload zone.
+3. The built-in analyzer parses SIP dialogs and ED-137 RTP packets, rendering a packet timeline with PTT, SQU, and SQI flags.
+4. If G.711 payloads are present, click **"▶ Play Restored Audio"** to reconstruct and audition the exact audio exchanged over the air.
 
 ---
 
-## 5. トラブルシューティング (FAQ)
+## 4. UI Reference Guide
 
-### Q1. ブラウザにアクセスしても 404 Not Found になる
-- **原因**: 別のコンテナ（例: `musubi-server` など）がポート `8080` を専有している可能性があります。
-- **解決策**: Aerovoice の VCS コンソールは **ポート `8082`** で起動しています。[**http://127.0.0.1:8082**](http://127.0.0.1:8082) にアクセスしてください。
+### 4.1 VCS Console Tabs
 
-### Q2. スピーカーから音が出ない / スペクトラムが動かない
-- **原因**: 最新のブラウザ（Chrome 等）の自動再生ポリシー、または Audio が OFF になっているためです。
-- **解決策**: VCS 画面右上の **「🔊 Audio OFF」** ボタンをクリックして **「🔊 Audio ON」** に切り替えてください。
+| Tab Name | Main Controls & Visual Elements | Purpose |
+| :--- | :--- | :--- |
+| **Radio Console** | Frequency cards, PTT/SQU lamps, PTT button, ATC voice trigger, Jitter slider, 60 FPS Canvas FFT spectrum | Operational radio monitoring, transmitting, and receiving |
+| **Telephony (DA)** | Direct Access buttons, speed dial keypad, active call card, speech and tone test triggers | Ground-to-ground intercom and telephone communication |
+| **Recordings** | Audio recording catalog, duration, inline player, WAV download links | Audit and retrieval of legally compliant communication logs |
+| **Supervision** | SIP node health cards, RTT latency meters, alive/dead indicators | Real-time monitoring of ground radio station network availability |
+| **PCAP Analyzer** | Drag & drop capture upload zone, decoded packet timeline, audio reconstructor | Forensic analysis of network captures without external tools |
+| **Comm Logs** | Terminal log viewer, protocol tags (SIP, ED-137), search filter, live ticker | Deep inspection of signaling transactions and media events |
 
-### Q3. PTT を押しても GRS 側に届かない
-- **解決策**: チャンネルカードの右上が `connected`（緑色）になっているか確認してください。`disconnected` の場合は **「📡 Connect to GRS」** をクリックして SIP セッションを確立してください。
+### 4.2 GRS Testbench Tabs
 
-### Q4. Audio OFF にしたのにノイズが聞こえることはないか？
-- **解説**: Aerovoice では、Audio OFF 時に `audioCtx.close()` を実行してブラウザのオーディオハードウェアを完全に解放し、マイク入力ストリームも物理停止（`track.stop()`）します。また、マイク音声がスピーカーにループバックしないゼロゲイン設計となっているため、OFF 時は電気的・物理的に 100% ノイズゼロ（完全 disable）になります。
+| Tab Name | Main Controls & Visual Elements | Purpose |
+| :--- | :--- | :--- |
+| **Radio Transceiver** | Squelch (SQU) toggle, audio source radios (Pilot EN/JA, Telephony EN/JA, Tone, Echo), impairment sliders | Ground base station transmission and fault simulation |
+| **Telephony Test** | Direct call trigger to VCS position 101, auto-answer mode configuration | Simulating inbound calls from external ATC centers |
+| **Supervision & Faults** | Silent drop toggle, OPTIONS ping counters | Testing VCS fault detection and failover alerting |
+| **Protocol Logs** | Real-time GRS event log terminal, clear logs button | Inspecting ground radio state transitions and RTP packet reception |
 
-### Q5. 終了・再起動したい
-- ターミナルで `Ctrl + C` を押すと、バックグラウンドの VCS・GRS プロセスが自動クリーンアップされて停止します。
-- 再度立ち上げる際は `make demo-vcs` を実行してください。
+---
 
-### Q6. 録音の最大時間と最大件数はいくつですか？ストレージが枯渇する心配はありませんか？
-- **解説**:
-  - **最大録音時間**: デフォルトで **1件あたり最大5分（300秒）** に制限されています。PTT を長時間押しっぱなしにした場合でも 5 分で安全に頭打ちとなり、正常な WAV ファイルとして保存されます。
-  - **最大保存件数**: デフォルトで **最大 100 件** です。上限に達すると、最も古い録音ファイルが自動的に削除（FIFO 自動ローテーション）されるため、ディスク容量が無制限に膨らむことはありません。
-  - **最大ストレージ占有量**: PCM 8kHz 16-bit モノラル（約16KB/秒）基準で、1件5分＝約4.8MB。100件すべてが5分間フル録音だった場合でも **最大約480MB** であり、一般的な環境で500MB以内に安全に収まります。
-  - **変更方法**: `configs/vcs.yaml` の `recording.max_recordings`（上限1,000件）や `recording.max_duration_seconds`（上限1,800秒=30分）、または環境変数 `AEROVOICE_VCS_REC_MAX_RECORDINGS`, `AEROVOICE_VCS_REC_MAX_DURATION_SECONDS` で任意に調整可能です。
+## 5. Troubleshooting & FAQ
 
+### Q1: I don't hear any audio from my PC speakers.
+- Check the top-right corner of the VCS console. If the button displays **"🔊 Enable Audio"**, click it to unmute. Modern browsers prevent audio playback until explicitly initiated by user interaction.
+- Ensure your OS sound output volume is not muted.
+
+### Q2: Windows Defender Firewall shows a warning on first launch.
+- Allow communication on **"Private Networks"**. Aerovoice requires local UDP communication on ports 5060, 5070, 10000, and 20000.
+
+### Q3: How do I switch languages?
+- Click the **"🌐 EN"** / **"🌐 JA"** button in the VCS header. The interface, help modals, and documentation links immediately switch to the selected language.
+
+---
+
+## 6. Multi-Tier E2E Test Suite & Continuous Integration
+
+To run the automated verification suite:
+
+```bash
+# Run unit & coverage test
+make test
+
+# Run ED-137 protocol verification suite
+make aerovoice-test
+
+# Run Headless Chrome visual E2E test suite (generates bilingual HTML reports)
+make vcs-frontend-e2e
+```
+
+All test reports and snapshots are deployed to [GitHub Pages](https://sh0jitmy.github.io/aerovoice/).
