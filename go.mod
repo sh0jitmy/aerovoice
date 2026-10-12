@@ -1,6 +1,6 @@
 module github.com/sh0jitmy/aerovoice
 
-go 1.26.6
+go 1.26.9
 
 require (
 	github.com/emiago/sipgo v1.6.0
