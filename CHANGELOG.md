@@ -1,5 +1,10 @@
 # Changelog
 
+## [v0.0.5](https://github.com/sh0jitmy/aerovoice/compare/v0.0.4...v0.0.5) - 2026-10-12
+
+- ci(deps): bump Songmu/tagpr from 1.21.0 to 1.21.1 in the github-actions group by @dependabot[bot] in https://github.com/sh0jitmy/aerovoice/pull/22
+- chore: update Go version to 1.26.9 in go.mod by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/24
+
 ## [v0.0.4](https://github.com/sh0jitmy/aerovoice/compare/v0.0.3...v0.0.4) - 2026-09-26
 
 - ci: configure dependabot for go modules and github actions by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/15
