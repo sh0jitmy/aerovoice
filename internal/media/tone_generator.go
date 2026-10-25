@@ -77,9 +77,7 @@ func (g *ToneGenerator) GenerateSimulatedVoice(nSamples int) []int16 {
 	defer g.mu.Unlock()
 
 	out := make([]int16, nSamples)
-	f1 := 2.0 * math.Pi * 400.0 / g.sampleRate
-	f2 := 2.0 * math.Pi * 1200.0 / g.sampleRate
-	f3 := 2.0 * math.Pi * 2400.0 / g.sampleRate
+	phaseIncrement := 2.0 * math.Pi * 400.0 / g.sampleRate
 
 	for i := 0; i < nSamples; i++ {
 		v := math.Sin(g.phase) * 8000.0
@@ -93,9 +91,7 @@ func (g *ToneGenerator) GenerateSimulatedVoice(nSamples int) []int16 {
 		}
 		out[i] = int16(v)
 
-		g.phase += f1
-		_ = f2
-		_ = f3
+		g.phase += phaseIncrement
 		if g.phase >= 2.0*math.Pi {
 			g.phase -= 2.0 * math.Pi
 		}

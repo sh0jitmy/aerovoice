@@ -88,10 +88,10 @@ type Service struct {
 func NewService(cfg *config.GRSConfig) (*Service, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	voicePlayer := media.NewVoicePromptPlayer(media.GetPilotVoiceSamples(), true)
-	voicePlayerJa := media.NewVoicePromptPlayer(media.GetPilotVoiceSamplesJA(), true)
-	telephonyPlayer := media.NewVoicePromptPlayer(media.GetTelephonyVoiceSamples(), true)
-	telephonyPlayerJa := media.NewVoicePromptPlayer(media.GetTelephonyVoiceSamplesJA(), true)
+	voicePlayer := media.NewVoicePromptPlayer(media.PilotVoiceSamples(), true)
+	voicePlayerJa := media.NewVoicePromptPlayer(media.PilotVoiceSamplesJA(), true)
+	telephonyPlayer := media.NewVoicePromptPlayer(media.TelephonyVoiceSamples(), true)
+	telephonyPlayerJa := media.NewVoicePromptPlayer(media.TelephonyVoiceSamplesJA(), true)
 	src := cfg.GRS.AudioSource
 	if src == "" {
 		src = "pilot_voice"
@@ -289,8 +289,8 @@ type StateSnapshot struct {
 	RecentLogs       []LogEntry                `json:"recent_logs"`
 }
 
-// GetSnapshot returns current state.
-func (s *Service) GetSnapshot() StateSnapshot {
+// Snapshot returns current state.
+func (s *Service) Snapshot() StateSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

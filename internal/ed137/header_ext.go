@@ -75,15 +75,11 @@ func (h *RadioHeaderExtension) EncodePayload() []byte {
 	buf := make([]byte, 4)
 
 	// Byte 0: [PTTType (3 bits)] [Squelch (1 bit)] [PTTID (4 bits)]
-	byte0 := (uint8(h.PTTType)&0x07)<<5 | (h.boolToBit(h.Squelch)&0x01)<<4 | (h.PTTID & 0x0F)
+	byte0 := (uint8(h.PTTType)&0x07)<<5 | (boolToBit(h.Squelch)&0x01)<<4 | (h.PTTID & 0x0F)
 	buf[0] = byte0
 
 	// Byte 1: SQI (Signal Quality Index)
 	buf[1] = h.SQI
-
-	// Byte 2 & 3: Reserved / padding (0x00)
-	buf[2] = 0x00
-	buf[3] = 0x00
 
 	return buf
 }
@@ -139,7 +135,7 @@ func DecodeFullExtension(data []byte) (*RadioHeaderExtension, error) {
 	return DecodePayload(data[4 : 4+int(lengthWords)*4])
 }
 
-func (h *RadioHeaderExtension) boolToBit(b bool) uint8 {
+func boolToBit(b bool) uint8 {
 	if b {
 		return 1
 	}

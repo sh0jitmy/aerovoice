@@ -149,7 +149,7 @@ type VCSService struct {
 func NewVCSService(cfg *config.VCSConfig, recorder *media.Recorder) (*VCSService, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	vcsCore := cfg.GetVCS()
+	vcsCore := cfg.Core()
 	sipNode, err := sip.NewSIPNode(sip.SIPNodeConfig{
 		Host:          vcsCore.SIPHost,
 		Port:          vcsCore.SIPPort,
@@ -167,7 +167,7 @@ func NewVCSService(cfg *config.VCSConfig, recorder *media.Recorder) (*VCSService
 		channels: make(map[string]*RadioChannel),
 		phone: &PhoneCallState{
 			mode:        "normal",
-			voicePlayer: media.NewVoicePromptPlayer(media.GetTelephonyVoiceSamples(), true),
+			voicePlayer: media.NewVoicePromptPlayer(media.TelephonyVoiceSamples(), true),
 		},
 		supervision: make(map[string]*SupervisionStatus),
 		//nolint:gosec // G115: port fits in int32
@@ -179,12 +179,12 @@ func NewVCSService(cfg *config.VCSConfig, recorder *media.Recorder) (*VCSService
 	}
 	svc.LogEvent("SYS", "INT", "INFO", fmt.Sprintf("VCS Service initialized (SIP %s:%d, RTP base %d)", vcsCore.SIPHost, vcsCore.SIPPort, vcsCore.RTPPortStart))
 
-	for _, chCfg := range cfg.GetChannels() {
+	for _, chCfg := range cfg.ChannelList() {
 		ch := &RadioChannel{
 			cfg:         chCfg,
 			fsm:         channel.NewChannelFSM(chCfg.ID),
 			volume:      80,
-			voicePlayer: media.NewVoicePromptPlayer(media.GetControllerVoiceSamples(), true),
+			voicePlayer: media.NewVoicePromptPlayer(media.ControllerVoiceSamples(), true),
 			txSource:    "voice",
 		}
 		svc.channels[chCfg.ID] = ch
@@ -199,7 +199,7 @@ func NewVCSService(cfg *config.VCSConfig, recorder *media.Recorder) (*VCSService
 	}
 
 	// Register telephony targets for supervision as well
-	for _, da := range cfg.GetTelephony().DirectAccess {
+	for _, da := range cfg.TelephonySettings().DirectAccess {
 		if da.TargetSIPURI != "" {
 			svc.supervision[da.TargetSIPURI] = &SupervisionStatus{
 				TargetURI: da.TargetSIPURI,
@@ -246,8 +246,8 @@ func (s *VCSService) LogEvent(proto, dir, level, msg string) {
 	slog.Debug("vcs_comm_log", "proto", proto, "dir", dir, "level", level, "msg", msg)
 }
 
-// GetRecentLogs returns up to limit recent log entries.
-func (s *VCSService) GetRecentLogs(limit int) []LogEntry {
+// RecentLogs returns up to limit recent log entries.
+func (s *VCSService) RecentLogs(limit int) []LogEntry {
 	s.logsMu.RLock()
 	defer s.logsMu.RUnlock()
 	if limit <= 0 || limit > len(s.logs) {
@@ -315,7 +315,7 @@ func (s *VCSService) ConnectChannel(ctx context.Context, channelID string) error
 	}
 
 	localRTPPort := s.allocateRTPPort()
-	vcsCore := s.cfg.GetVCS()
+	vcsCore := s.cfg.Core()
 
 	sdpOffer, err := sip.BuildRadioSDP(vcsCore.RTPHost, localRTPPort, codec.PayloadTypePCMA, ch.cfg.Ptime)
 	if err != nil {
@@ -451,12 +451,12 @@ func (s *VCSService) StartPTT(channelID string, pttType ed137.PTTType, pttID uin
 			out = ch.micBuffer[:nSamples]
 			ch.micBuffer = ch.micBuffer[nSamples:]
 		} else if ch.txSource == "tone" {
-			out = toneGen.GenerateSineWave(1000.0, nSamples, 16000.0)
+			out = toneGen.Generate1kHzTone(nSamples)
 		} else if ch.voicePlayer != nil {
 			// Human speech: Controller ATC voice ("Tokyo Tower, Japan Air 123...")
 			out = ch.voicePlayer.NextFrame(nSamples)
 		} else {
-			out = toneGen.GenerateSineWave(1000.0, nSamples, 16000.0)
+			out = toneGen.Generate1kHzTone(nSamples)
 		}
 
 		s.recorder.AppendSamples(ch.txRecID, out)
@@ -627,7 +627,7 @@ func (s *VCSService) SetChannelJitterBuffer(channelID string, bufferMs int) erro
 func (s *VCSService) DialDA(ctx context.Context, daID string, mode string) error {
 	s.mu.RLock()
 	var targetURI string
-	for _, da := range s.cfg.GetTelephony().DirectAccess {
+	for _, da := range s.cfg.TelephonySettings().DirectAccess {
 		if da.ID == daID {
 			targetURI = da.TargetSIPURI
 			break
@@ -655,7 +655,7 @@ func (s *VCSService) DialURI(ctx context.Context, targetURI string, mode string)
 		mode = "normal"
 	}
 
-	vcsCore := s.cfg.GetVCS()
+	vcsCore := s.cfg.Core()
 	localRTPPort := s.allocateRTPPort()
 
 	sdpOffer, err := sip.BuildRadioSDP(vcsCore.RTPHost, localRTPPort, codec.PayloadTypePCMA, 20)
@@ -727,30 +727,24 @@ func (s *VCSService) DialURI(ctx context.Context, targetURI string, mode string)
 		s.phone.mu.Lock()
 		defer s.phone.mu.Unlock()
 
-		var out []int16
+		out := make([]int16, nSamples)
 		switch s.phone.mode {
 		case "speech":
 			if s.phone.voicePlayer != nil {
 				out = s.phone.voicePlayer.NextFrame(nSamples)
-			} else {
-				out = make([]int16, nSamples)
 			}
 		case "tone":
-			out = toneGen.GenerateSineWave(1000.0, nSamples, 16000.0)
+			out = toneGen.Generate1kHzTone(nSamples)
 		case "echo":
 			// Loopback mode: wait 300ms (15 frames @ 20ms) then send received audio back
 			if len(s.phone.echoBuffer) > 15 {
 				out = s.phone.echoBuffer[0]
 				s.phone.echoBuffer = s.phone.echoBuffer[1:]
-			} else {
-				out = make([]int16, nSamples)
 			}
 		default:
 			if len(s.phone.micBuffer) >= nSamples {
 				out = s.phone.micBuffer[:nSamples]
 				s.phone.micBuffer = s.phone.micBuffer[nSamples:]
-			} else {
-				out = make([]int16, nSamples)
 			}
 		}
 
@@ -805,13 +799,13 @@ func (s *VCSService) HangupPhone(ctx context.Context) error {
 	return nil
 }
 
-// GetChannelSnapshots returns real-time state snapshots for all configured radio channels.
-func (s *VCSService) GetChannelSnapshots() []ChannelStateSnapshot {
+// ChannelSnapshots returns real-time state snapshots for all configured radio channels.
+func (s *VCSService) ChannelSnapshots() []ChannelStateSnapshot {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	snapshots := make([]ChannelStateSnapshot, 0, len(s.channels))
-	for _, chCfg := range s.cfg.GetChannels() {
+	for _, chCfg := range s.cfg.ChannelList() {
 		ch, ok := s.channels[chCfg.ID]
 		if !ok {
 			continue
@@ -860,8 +854,8 @@ func (s *VCSService) GetChannelSnapshots() []ChannelStateSnapshot {
 	return snapshots
 }
 
-// GetTelephonySnapshot returns current telephony status.
-func (s *VCSService) GetTelephonySnapshot() TelephonyStateSnapshot {
+// TelephonySnapshot returns current telephony status.
+func (s *VCSService) TelephonySnapshot() TelephonyStateSnapshot {
 	s.phone.mu.RLock()
 	defer s.phone.mu.RUnlock()
 
@@ -885,8 +879,8 @@ func (s *VCSService) GetTelephonySnapshot() TelephonyStateSnapshot {
 	return snap
 }
 
-// GetSupervisionStatuses returns latest health check results for all GRS nodes.
-func (s *VCSService) GetSupervisionStatuses() []SupervisionStatus {
+// SupervisionStatuses returns latest health check results for all GRS nodes.
+func (s *VCSService) SupervisionStatuses() []SupervisionStatus {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

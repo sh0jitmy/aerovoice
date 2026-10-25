@@ -76,7 +76,7 @@ func TestVCSService_InitAndSnapshots(t *testing.T) {
 	defer func() { _ = svc.Close() }()
 
 	// Verify channel snapshots
-	snaps := svc.GetChannelSnapshots()
+	snaps := svc.ChannelSnapshots()
 	require.Len(t, snaps, 1)
 	assert.Equal(t, "ch-test-1", snaps[0].ID)
 	assert.Equal(t, "disconnected", snaps[0].State)
@@ -84,14 +84,14 @@ func TestVCSService_InitAndSnapshots(t *testing.T) {
 	assert.Equal(t, 40, snaps[0].JitterBufferMs)
 
 	// Verify telephony snapshot
-	phoneSnap := svc.GetTelephonySnapshot()
+	phoneSnap := svc.TelephonySnapshot()
 	assert.False(t, phoneSnap.Active)
 	assert.Equal(t, "idle", phoneSnap.State)
 
 	// Verify dynamic jitter buffer modification
 	err = svc.SetChannelJitterBuffer("ch-test-1", 80)
 	require.NoError(t, err)
-	snaps = svc.GetChannelSnapshots()
+	snaps = svc.ChannelSnapshots()
 	assert.Equal(t, 80, snaps[0].JitterBufferMs)
 }
 
@@ -180,14 +180,14 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	err = vcsSvc.ConnectChannel(ctx, "ch-e2e")
 	require.NoError(t, err)
 
-	snaps := vcsSvc.GetChannelSnapshots()
+	snaps := vcsSvc.ChannelSnapshots()
 	assert.Equal(t, "connected", snaps[0].State)
 
 	// 2. Start PTT Transmission
 	err = vcsSvc.StartPTT("ch-e2e", ed137.PTTNormal, 1)
 	require.NoError(t, err)
 
-	snaps = vcsSvc.GetChannelSnapshots()
+	snaps = vcsSvc.ChannelSnapshots()
 	assert.Equal(t, "transmitting", snaps[0].State)
 	assert.True(t, snaps[0].PTTActive)
 
@@ -204,7 +204,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	err = vcsSvc.StopPTT("ch-e2e")
 	require.NoError(t, err)
 
-	snaps = vcsSvc.GetChannelSnapshots()
+	snaps = vcsSvc.ChannelSnapshots()
 	assert.Equal(t, "connected", snaps[0].State)
 	assert.False(t, snaps[0].PTTActive)
 
@@ -212,7 +212,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	err = vcsSvc.DialDA(ctx, "da-tower", "tone")
 	require.NoError(t, err)
 
-	phoneSnap := vcsSvc.GetTelephonySnapshot()
+	phoneSnap := vcsSvc.TelephonySnapshot()
 	assert.True(t, phoneSnap.Active)
 	assert.Equal(t, "connected", phoneSnap.State)
 
@@ -225,7 +225,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	err = vcsSvc.SendVoiceTransmission("ch-e2e")
 	require.NoError(t, err)
 
-	snaps = vcsSvc.GetChannelSnapshots()
+	snaps = vcsSvc.ChannelSnapshots()
 	assert.True(t, snaps[0].PTTActive)
 	assert.Equal(t, "transmitting", snaps[0].State)
 
@@ -236,7 +236,7 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	err = vcsSvc.DialDA(ctx, "da-tower", "speech")
 	require.NoError(t, err)
 
-	phoneSnap = vcsSvc.GetTelephonySnapshot()
+	phoneSnap = vcsSvc.TelephonySnapshot()
 	assert.True(t, phoneSnap.Active)
 	assert.Equal(t, "speech", phoneSnap.Mode)
 
@@ -245,6 +245,6 @@ func TestVCSService_RadioAndTelephonyInteraction(t *testing.T) {
 	require.NoError(t, err)
 
 	// 6. Verify Recordings were created
-	recs := recorder.GetRecordings()
+	recs := recorder.Recordings()
 	assert.NotEmpty(t, recs)
 }

@@ -125,11 +125,11 @@ func TestRecorder_WAV(t *testing.T) {
 	assert.InDelta(t, 1.0, meta.DurationS, 0.05)
 
 	// Retrieve recordings list
-	list := rec.GetRecordings()
+	list := rec.Recordings()
 	assert.Len(t, list, 1)
 
 	// Read WAV file content
-	wavData, err := rec.GetWAVData("test-rec-1")
+	wavData, err := rec.WAVData("test-rec-1")
 	require.NoError(t, err)
 	assert.Len(t, wavData, 44+len(samples)*2)
 	assert.Equal(t, "RIFF", string(wavData[0:4]))
@@ -138,7 +138,7 @@ func TestRecorder_WAV(t *testing.T) {
 	// Test reloading existing recordings on new Recorder initialization
 	rec2, err := NewRecorder(tmpDir)
 	require.NoError(t, err)
-	list2 := rec2.GetRecordings()
+	list2 := rec2.Recordings()
 	assert.Len(t, list2, 1)
 	assert.Equal(t, "Audio Recording", list2[0].Type)
 }
@@ -185,7 +185,7 @@ func TestRecorder_LimitsAndRetention(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, meta3)
 
-	assert.Len(t, rec.GetRecordings(), 3)
+	assert.Len(t, rec.Recordings(), 3)
 	assert.FileExists(t, firstFile)
 
 	// 3. Add 4th recording -> exceeds max limit (3) -> oldest (rec-long-1) must be purged from disk
@@ -196,7 +196,7 @@ func TestRecorder_LimitsAndRetention(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, meta4)
 
-	recs := rec.GetRecordings()
+	recs := rec.Recordings()
 	assert.Len(t, recs, 3)
 	assert.Equal(t, "rec-4", recs[0].ID)
 	assert.Equal(t, "rec-3", recs[1].ID)
@@ -212,7 +212,7 @@ func TestRecorder_LimitsAndRetention(t *testing.T) {
 		MaxDurationSeconds: 5,
 	})
 	require.NoError(t, err)
-	startupRecs := recStartup.GetRecordings()
+	startupRecs := recStartup.Recordings()
 	assert.Len(t, startupRecs, 2)
 	assert.Equal(t, "rec-4", startupRecs[0].ID)
 	assert.Equal(t, "rec-3", startupRecs[1].ID)

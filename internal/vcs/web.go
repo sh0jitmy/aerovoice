@@ -160,9 +160,9 @@ func (w *WebServer) BroadcastAudio(channelID string, pcmSamples []int16, isRx bo
 		return
 	}
 
-	buf := new(bytes.Buffer)
+	var buf bytes.Buffer
 	for _, s := range pcmSamples {
-		_ = binary.Write(buf, binary.LittleEndian, s)
+		_ = binary.Write(&buf, binary.LittleEndian, s)
 	}
 	data := buf.Bytes()
 
@@ -234,7 +234,7 @@ func (w *WebServer) handleWebSocket(rw http.ResponseWriter, r *http.Request) {
 	w.wsMu.Unlock()
 
 	// Stream initial recent logs to newly connected client
-	for _, entry := range w.svc.GetRecentLogs(50) {
+	for _, entry := range w.svc.RecentLogs(50) {
 		msg, _ := json.Marshal(map[string]any{
 			"type": "log",
 			"data": entry,
@@ -269,7 +269,7 @@ func (w *WebServer) handleWebSocket(rw http.ResponseWriter, r *http.Request) {
 
 // UI Components
 func (w *WebServer) handleUIRadioChannels(rw http.ResponseWriter, r *http.Request) {
-	snaps := w.svc.GetChannelSnapshots()
+	snaps := w.svc.ChannelSnapshots()
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	tmplStr := `
@@ -339,8 +339,8 @@ func (w *WebServer) handleUIRadioChannels(rw http.ResponseWriter, r *http.Reques
 }
 
 func (w *WebServer) handleUITelephony(rw http.ResponseWriter, r *http.Request) {
-	phoneSnap := w.svc.GetTelephonySnapshot()
-	daList := w.svc.cfg.GetTelephony().DirectAccess
+	phoneSnap := w.svc.TelephonySnapshot()
+	daList := w.svc.cfg.TelephonySettings().DirectAccess
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	data := map[string]any{
@@ -408,7 +408,7 @@ func (w *WebServer) handleUITelephony(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (w *WebServer) handleUIRecordings(rw http.ResponseWriter, r *http.Request) {
-	recs := w.recorder.GetRecordings()
+	recs := w.recorder.Recordings()
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if len(recs) == 0 {
@@ -460,7 +460,7 @@ func (w *WebServer) handleUIRecordings(rw http.ResponseWriter, r *http.Request) 
 }
 
 func (w *WebServer) handleUISupervision(rw http.ResponseWriter, r *http.Request) {
-	stats := w.svc.GetSupervisionStatuses()
+	stats := w.svc.SupervisionStatuses()
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	tmplStr := `
@@ -525,16 +525,15 @@ func (w *WebServer) handleRadioPTT(rw http.ResponseWriter, r *http.Request) {
 		pttType = ed137.PTTNormal
 	}
 
+	var err error
 	if action == "start" {
-		if err := w.svc.StartPTT(chID, pttType, 1); err != nil {
-			http.Error(rw, err.Error(), http.StatusBadRequest)
-			return
-		}
+		err = w.svc.StartPTT(chID, pttType, 1)
 	} else {
-		if err := w.svc.StopPTT(chID); err != nil {
-			http.Error(rw, err.Error(), http.StatusBadRequest)
-			return
-		}
+		err = w.svc.StopPTT(chID)
+	}
+	if err != nil {
+		http.Error(rw, err.Error(), http.StatusBadRequest)
+		return
 	}
 	rw.WriteHeader(http.StatusOK)
 }
@@ -690,7 +689,7 @@ func (w *WebServer) handleManual(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (w *WebServer) handleAPILogs(rw http.ResponseWriter, r *http.Request) {
-	logs := w.svc.GetRecentLogs(200)
+	logs := w.svc.RecentLogs(200)
 	rw.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(rw).Encode(logs)
 }
@@ -705,7 +704,7 @@ func (w *WebServer) handleAPILogsClear(rw http.ResponseWriter, r *http.Request) 
 }
 
 func (w *WebServer) handleUILogsTerminal(rw http.ResponseWriter, r *http.Request) {
-	logs := w.svc.GetRecentLogs(100)
+	logs := w.svc.RecentLogs(100)
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	tmplStr := `

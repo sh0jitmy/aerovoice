@@ -102,8 +102,8 @@ func (jb *JitterBuffer) SetTargetDelay(delayMs int) {
 	jb.targetDelay = time.Duration(delayMs) * time.Millisecond
 }
 
-// GetTargetDelayMs returns current target delay in milliseconds.
-func (jb *JitterBuffer) GetTargetDelayMs() int {
+// TargetDelayMs returns current target delay in milliseconds.
+func (jb *JitterBuffer) TargetDelayMs() int {
 	jb.mu.Lock()
 	defer jb.mu.Unlock()
 	return int(jb.targetDelay / time.Millisecond)

@@ -124,6 +124,6 @@ func TestWebServer_Endpoints(t *testing.T) {
 	webSvr.server.Handler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	snaps := svc.GetChannelSnapshots()
+	snaps := svc.ChannelSnapshots()
 	assert.Equal(t, 60, snaps[0].JitterBufferMs)
 }

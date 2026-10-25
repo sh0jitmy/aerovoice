@@ -18,6 +18,7 @@ package pcap
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -111,7 +112,7 @@ func AnalyzePCAP(reader io.Reader, fileName string) (*AnalysisReport, error) {
 
 	for {
 		data, ci, err := pcapReader.ReadPacketData()
-		if errorsIsEOF(err) {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
@@ -316,8 +317,8 @@ func AnalyzePCAP(reader io.Reader, fileName string) (*AnalysisReport, error) {
 
 // BuildPCAPFromPackets writes an in-memory raw PCAP file from UDP payloads (for Live Capture feature).
 func BuildPCAPFromPackets(packets [][]byte, timestamps []time.Time) ([]byte, error) {
-	buf := new(bytes.Buffer)
-	writer := pcapgo.NewWriter(buf)
+	var buf bytes.Buffer
+	writer := pcapgo.NewWriter(&buf)
 	if err := writer.WriteFileHeader(65535, layers.LinkTypeEthernet); err != nil {
 		return nil, err
 	}
@@ -338,8 +339,4 @@ func BuildPCAPFromPackets(packets [][]byte, timestamps []time.Time) ([]byte, err
 	}
 
 	return buf.Bytes(), nil
-}
-
-func errorsIsEOF(err error) bool {
-	return err == io.EOF || (err != nil && err.Error() == "EOF")
 }

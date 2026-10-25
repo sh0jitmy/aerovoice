@@ -227,8 +227,8 @@ func (n *SIPNode) SetSilentDrop(drop bool) {
 	n.silentDrop = drop
 }
 
-// GetOptionsStats returns count and time of last answered OPTIONS.
-func (n *SIPNode) GetOptionsStats() (uint64, time.Time) {
+// OptionsStats returns count and time of last answered OPTIONS.
+func (n *SIPNode) OptionsStats() (uint64, time.Time) {
 	n.mu.RLock()
 	defer n.mu.RUnlock()
 	return n.optionsCount, n.lastOptionsTime

@@ -53,12 +53,12 @@ func TestChannelFSM_Transitions(t *testing.T) {
 	ok := fsm.PTTDown()
 	assert.True(t, ok)
 	assert.Equal(t, StateTransmitting, fsm.State())
-	assert.True(t, fsm.IsPTTActive())
+	assert.True(t, fsm.PTTActive())
 
 	// Squelch while transmitting (PTT has priority)
 	fsm.SquelchOn()
 	assert.Equal(t, StateTransmitting, fsm.State())
-	assert.True(t, fsm.IsSQUActive())
+	assert.True(t, fsm.SQUActive())
 
 	// PTT release (SQU still on -> receiving)
 	ok = fsm.PTTUp()

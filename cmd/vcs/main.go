@@ -74,7 +74,7 @@ func main() {
 	}
 	defer func() { _ = svc.Close() }()
 
-	webCore := cfg.GetVCS()
+	webCore := cfg.Core()
 	webSvr, err := vcs.NewWebServer(svc, recorder, webCore.WebHost, webCore.WebPort)
 	if err != nil {
 		slog.Error("Failed to start VCS Web Console", "error", err)
