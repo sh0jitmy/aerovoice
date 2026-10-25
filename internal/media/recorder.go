@@ -227,18 +227,20 @@ func (r *Recorder) AppendSamples(sessionID string, samples []int16) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if sess, ok := r.activeRecord[sessionID]; ok {
-		currentLen := len(sess.samples)
-		if currentLen >= r.maxSamples {
-			return // Duration cap reached
-		}
-		remaining := r.maxSamples - currentLen
-		if len(samples) > remaining {
-			sess.samples = append(sess.samples, samples[:remaining]...)
-		} else {
-			sess.samples = append(sess.samples, samples...)
-		}
+	sess, ok := r.activeRecord[sessionID]
+	if !ok {
+		return
 	}
+	currentLen := len(sess.samples)
+	if currentLen >= r.maxSamples {
+		return // Duration cap reached
+	}
+	remaining := r.maxSamples - currentLen
+	if len(samples) > remaining {
+		sess.samples = append(sess.samples, samples[:remaining]...)
+		return
+	}
+	sess.samples = append(sess.samples, samples...)
 }
 
 // StopRecording finalizes the session, writes the WAV file to disk, and indexes it.

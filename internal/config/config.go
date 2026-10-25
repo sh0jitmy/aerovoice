@@ -111,14 +111,14 @@ type GRSTelephoneConfig struct {
 	AutoAnswerMode string `yaml:"auto_answer_mode" json:"auto_answer_mode"`
 }
 
-func getEnvString(key, fallback string) string {
+func envString(key, fallback string) string {
 	if val := os.Getenv(key); val != "" {
 		return val
 	}
 	return fallback
 }
 
-func getEnvInt(key string, fallback int) int {
+func envInt(key string, fallback int) int {
 	if val := os.Getenv(key); val != "" {
 		var n int
 		if _, err := fmt.Sscanf(val, "%d", &n); err == nil && n > 0 {
@@ -142,12 +142,12 @@ func LoadVCSConfig(path string) (*VCSConfig, error) {
 	}
 
 	// Environment variable overrides
-	cfg.VCS.SIPHost = getEnvString("AEROVOICE_VCS_SIP_HOST", cfg.VCS.SIPHost)
-	cfg.VCS.SIPPort = getEnvInt("AEROVOICE_VCS_SIP_PORT", cfg.VCS.SIPPort)
-	cfg.VCS.RTPHost = getEnvString("AEROVOICE_VCS_RTP_HOST", cfg.VCS.RTPHost)
-	cfg.VCS.RTPPortStart = getEnvInt("AEROVOICE_VCS_RTP_PORT_START", cfg.VCS.RTPPortStart)
-	cfg.VCS.WebHost = getEnvString("AEROVOICE_VCS_WEB_HOST", cfg.VCS.WebHost)
-	cfg.VCS.WebPort = getEnvInt("AEROVOICE_VCS_WEB_PORT", cfg.VCS.WebPort)
+	cfg.VCS.SIPHost = envString("AEROVOICE_VCS_SIP_HOST", cfg.VCS.SIPHost)
+	cfg.VCS.SIPPort = envInt("AEROVOICE_VCS_SIP_PORT", cfg.VCS.SIPPort)
+	cfg.VCS.RTPHost = envString("AEROVOICE_VCS_RTP_HOST", cfg.VCS.RTPHost)
+	cfg.VCS.RTPPortStart = envInt("AEROVOICE_VCS_RTP_PORT_START", cfg.VCS.RTPPortStart)
+	cfg.VCS.WebHost = envString("AEROVOICE_VCS_WEB_HOST", cfg.VCS.WebHost)
+	cfg.VCS.WebPort = envInt("AEROVOICE_VCS_WEB_PORT", cfg.VCS.WebPort)
 
 	if cfg.VCS.DefaultPtime == 0 {
 		cfg.VCS.DefaultPtime = 10
@@ -157,8 +157,8 @@ func LoadVCSConfig(path string) (*VCSConfig, error) {
 	}
 
 	// Recording limits & governance (Defaults: 100 recordings, 300s/5min; Hard limits: 1000 recordings, 1800s/30min)
-	cfg.Recording.MaxRecordings = getEnvInt("AEROVOICE_VCS_REC_MAX_RECORDINGS", cfg.Recording.MaxRecordings)
-	cfg.Recording.MaxDurationSeconds = getEnvInt("AEROVOICE_VCS_REC_MAX_DURATION_SECONDS", cfg.Recording.MaxDurationSeconds)
+	cfg.Recording.MaxRecordings = envInt("AEROVOICE_VCS_REC_MAX_RECORDINGS", cfg.Recording.MaxRecordings)
+	cfg.Recording.MaxDurationSeconds = envInt("AEROVOICE_VCS_REC_MAX_DURATION_SECONDS", cfg.Recording.MaxDurationSeconds)
 
 	if cfg.Recording.MaxRecordings <= 0 {
 		cfg.Recording.MaxRecordings = 100
@@ -189,13 +189,13 @@ func LoadGRSConfig(path string) (*GRSConfig, error) {
 	}
 
 	// Environment variable overrides
-	cfg.GRS.SIPHost = getEnvString("AEROVOICE_GRS_SIP_HOST", cfg.GRS.SIPHost)
-	cfg.GRS.SIPPort = getEnvInt("AEROVOICE_GRS_SIP_PORT", cfg.GRS.SIPPort)
-	cfg.GRS.RTPHost = getEnvString("AEROVOICE_GRS_RTP_HOST", cfg.GRS.RTPHost)
-	cfg.GRS.RTPPort = getEnvInt("AEROVOICE_GRS_RTP_PORT", cfg.GRS.RTPPort)
-	cfg.GRS.WebHost = getEnvString("AEROVOICE_GRS_WEB_HOST", cfg.GRS.WebHost)
-	cfg.GRS.WebPort = getEnvInt("AEROVOICE_GRS_WEB_PORT", cfg.GRS.WebPort)
-	cfg.GRS.VCSSIPURI = getEnvString("AEROVOICE_GRS_VCS_SIP_URI", cfg.GRS.VCSSIPURI)
+	cfg.GRS.SIPHost = envString("AEROVOICE_GRS_SIP_HOST", cfg.GRS.SIPHost)
+	cfg.GRS.SIPPort = envInt("AEROVOICE_GRS_SIP_PORT", cfg.GRS.SIPPort)
+	cfg.GRS.RTPHost = envString("AEROVOICE_GRS_RTP_HOST", cfg.GRS.RTPHost)
+	cfg.GRS.RTPPort = envInt("AEROVOICE_GRS_RTP_PORT", cfg.GRS.RTPPort)
+	cfg.GRS.WebHost = envString("AEROVOICE_GRS_WEB_HOST", cfg.GRS.WebHost)
+	cfg.GRS.WebPort = envInt("AEROVOICE_GRS_WEB_PORT", cfg.GRS.WebPort)
+	cfg.GRS.VCSSIPURI = envString("AEROVOICE_GRS_VCS_SIP_URI", cfg.GRS.VCSSIPURI)
 
 	if cfg.GRS.VCSSIPURI == "" {
 		cfg.GRS.VCSSIPURI = "sip:101@127.0.0.1:5060"

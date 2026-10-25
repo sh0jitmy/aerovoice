@@ -62,8 +62,8 @@ func createSyntheticEthernetUDPPacket(srcPort, dstPort uint16, payload []byte) [
 func TestAnalyzePCAP(t *testing.T) {
 	t.Parallel()
 	// Create an in-memory PCAP with 1 SIP INVITE and 5 RTP packets with ED-137 extension
-	pcapBuf := new(bytes.Buffer)
-	writer := pcapgo.NewWriter(pcapBuf)
+	var pcapBuf bytes.Buffer
+	writer := pcapgo.NewWriter(&pcapBuf)
 	err := writer.WriteFileHeader(65535, layers.LinkTypeEthernet)
 	require.NoError(t, err)
 
