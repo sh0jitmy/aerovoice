@@ -47,13 +47,13 @@ func (h PacketHeap) Swap(i, j int) {
 	h[i].index = i
 	h[j].index = j
 }
-func (h *PacketHeap) Push(x interface{}) {
+func (h *PacketHeap) Push(x any) {
 	n := len(*h)
 	item := x.(*BufferedPacket)
 	item.index = n
 	*h = append(*h, item)
 }
-func (h *PacketHeap) Pop() interface{} {
+func (h *PacketHeap) Pop() any {
 	old := *h
 	n := len(old)
 	item := old[n-1]

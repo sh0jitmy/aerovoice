@@ -53,6 +53,7 @@ type WebServer struct {
 	wsMu        sync.Mutex
 	lastPCAPWAV []byte
 	lastPCAPMu  sync.RWMutex
+	logUnsub    func()
 }
 
 // NewWebServer initializes and launches the VCS web console server on specified host/port.
@@ -99,7 +100,8 @@ func NewWebServer(svc *VCSService, recorder *media.Recorder, host string, port i
 	mux.HandleFunc("/docs/manual", ws.handleManual)
 
 	// Forward live logs from VCSService to WebSocket clients
-	logChan, _ := svc.SubscribeLogs()
+	logChan, unsub := svc.SubscribeLogs()
+	ws.logUnsub = unsub
 	go func() {
 		for entry := range logChan {
 			ws.BroadcastEvent("log", entry)
@@ -139,6 +141,10 @@ func (w *WebServer) Addr() string {
 
 // Close terminates the web server and closes active WebSockets.
 func (w *WebServer) Close() error {
+	if w.logUnsub != nil {
+		w.logUnsub()
+	}
+
 	w.wsMu.Lock()
 	for c := range w.wsClients {
 		_ = c.Close()

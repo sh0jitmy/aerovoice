@@ -186,7 +186,7 @@ func (n *SIPNode) Call(ctx context.Context, targetURIStr string, sdpOffer []byte
 func (n *SIPNode) Ping(ctx context.Context, targetURIStr string) (rtt time.Duration, retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
-			retErr = fmt.Errorf("OPTIONS panic recovered: %v", r)
+			retErr = fmt.Errorf("options panic recovered: %v", r)
 		}
 	}()
 
@@ -210,11 +210,11 @@ func (n *SIPNode) Ping(ctx context.Context, targetURIStr string) (rtt time.Durat
 			return time.Since(start), nil
 		}
 		if res != nil {
-			return 0, fmt.Errorf("OPTIONS responded with %d %s", res.StatusCode, res.Reason)
+			return 0, fmt.Errorf("options responded with %d %s", res.StatusCode, res.Reason)
 		}
-		return 0, errors.New("OPTIONS response was nil")
+		return 0, errors.New("options response was nil")
 	case <-tx.Done():
-		return 0, errors.New("OPTIONS transaction done")
+		return 0, errors.New("options transaction done")
 	case <-ctx.Done():
 		return 0, ctx.Err()
 	}
