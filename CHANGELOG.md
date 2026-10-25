@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.6](https://github.com/sh0jitmy/aerovoice/compare/v0.0.5...v0.0.6) - 2026-10-25
+
+- chore: bump Go version to 1.26.10 and apply Effective Go refactoring by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/28
+
 ## [v0.0.5](https://github.com/sh0jitmy/aerovoice/compare/v0.0.4...v0.0.5) - 2026-10-25
 
 - ci(deps): bump Songmu/tagpr from 1.21.0 to 1.21.1 in the github-actions group by @dependabot[bot] in https://github.com/sh0jitmy/aerovoice/pull/22
