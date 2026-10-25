@@ -62,7 +62,7 @@ func TestGRSService_InitAndControls(t *testing.T) {
 	defer func() { _ = svc.Close() }()
 
 	// Verify Snapshot
-	snap := svc.GetSnapshot()
+	snap := svc.Snapshot()
 	assert.Equal(t, "Test-GRS-Station", snap.StationName)
 	assert.Equal(t, "118.100 MHz", snap.Frequency)
 	assert.Equal(t, "tone_1khz", snap.AudioSource)
@@ -70,21 +70,21 @@ func TestGRSService_InitAndControls(t *testing.T) {
 
 	// Verify Squelch Control
 	svc.SetSquelch(true)
-	snap = svc.GetSnapshot()
+	snap = svc.Snapshot()
 	assert.True(t, snap.TxSQUActive)
 
 	svc.SetSquelch(false)
-	snap = svc.GetSnapshot()
+	snap = svc.Snapshot()
 	assert.False(t, snap.TxSQUActive)
 
 	// Verify Source Change
 	svc.SetAudioSource("synthetic_voice")
-	snap = svc.GetSnapshot()
+	snap = svc.Snapshot()
 	assert.Equal(t, "synthetic_voice", snap.AudioSource)
 
 	// Verify Impairment Injection
 	svc.SetImpairment(25, 5)
-	snap = svc.GetSnapshot()
+	snap = svc.Snapshot()
 	assert.Equal(t, 25, snap.InjJitterMs)
 	assert.Equal(t, 5, snap.InjLossPct)
 
@@ -179,7 +179,7 @@ func TestGRSService_LoopbackEcho(t *testing.T) {
 	defer func() { _ = svc.Close() }()
 
 	svc.SetAudioSource("loopback")
-	snap := svc.GetSnapshot()
+	snap := svc.Snapshot()
 	assert.Equal(t, "loopback", snap.AudioSource)
 
 	// When loopback queue is empty, generateAudioFrame should return silence (all zeros)

@@ -172,20 +172,20 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	err = vcsSvc.ConnectChannel(ctx, "ch-e2e-1")
 	require.NoError(t, err)
 
-	chSnaps := vcsSvc.GetChannelSnapshots()
+	chSnaps := vcsSvc.ChannelSnapshots()
 	require.Len(t, chSnaps, 1)
 	assert.Equal(t, "connected", chSnaps[0].State)
 
 	// 5.5. Immediate Downlink SQUELCH Carrier without prior PTT (Verifies Rx works without PTT)
 	grsSvc.SetSquelch(true)
 	assert.Eventually(t, func() bool {
-		snaps := vcsSvc.GetChannelSnapshots()
+		snaps := vcsSvc.ChannelSnapshots()
 		return len(snaps) > 0 && snaps[0].SQUActive
 	}, 2*time.Second, 20*time.Millisecond, "GRS downlink audio must be receivable immediately upon connection without requiring PTT")
 
 	grsSvc.SetSquelch(false)
 	assert.Eventually(t, func() bool {
-		snaps := vcsSvc.GetChannelSnapshots()
+		snaps := vcsSvc.ChannelSnapshots()
 		return len(snaps) > 0 && !snaps[0].SQUActive
 	}, 2*time.Second, 20*time.Millisecond)
 
@@ -193,7 +193,7 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	err = vcsSvc.StartPTT("ch-e2e-1", ed137.PTTNormal, 1)
 	require.NoError(t, err)
 
-	chSnaps = vcsSvc.GetChannelSnapshots()
+	chSnaps = vcsSvc.ChannelSnapshots()
 	assert.Equal(t, "transmitting", chSnaps[0].State)
 	assert.True(t, chSnaps[0].PTTActive)
 
@@ -202,20 +202,20 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	err = vcsSvc.StopPTT("ch-e2e-1")
 	require.NoError(t, err)
 
-	chSnaps = vcsSvc.GetChannelSnapshots()
+	chSnaps = vcsSvc.ChannelSnapshots()
 	assert.Equal(t, "connected", chSnaps[0].State)
 	assert.False(t, chSnaps[0].PTTActive)
 
 	// 7. GRS Downlink SQUELCH Carrier -> VCS Reception
 	grsSvc.SetSquelch(true)
 	assert.Eventually(t, func() bool {
-		snaps := vcsSvc.GetChannelSnapshots()
+		snaps := vcsSvc.ChannelSnapshots()
 		return len(snaps) > 0 && snaps[0].SQUActive
 	}, 2*time.Second, 20*time.Millisecond)
 
 	grsSvc.SetSquelch(false)
 	assert.Eventually(t, func() bool {
-		snaps := vcsSvc.GetChannelSnapshots()
+		snaps := vcsSvc.ChannelSnapshots()
 		return len(snaps) > 0 && !snaps[0].SQUActive
 	}, 2*time.Second, 20*time.Millisecond)
 
@@ -223,7 +223,7 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	err = vcsSvc.DialDA(ctx, "da-grs", "tone")
 	require.NoError(t, err)
 
-	phoneSnap := vcsSvc.GetTelephonySnapshot()
+	phoneSnap := vcsSvc.TelephonySnapshot()
 	assert.True(t, phoneSnap.Active)
 	assert.Equal(t, "connected", phoneSnap.State)
 
@@ -232,11 +232,11 @@ func TestE2E_VCS_GRS_FullStack(t *testing.T) {
 	err = vcsSvc.HangupPhone(ctx)
 	require.NoError(t, err)
 
-	phoneSnap = vcsSvc.GetTelephonySnapshot()
+	phoneSnap = vcsSvc.TelephonySnapshot()
 	assert.False(t, phoneSnap.Active)
 
 	// 9. Verify Audio Recordings
-	recordings := recorder.GetRecordings()
+	recordings := recorder.Recordings()
 	assert.NotEmpty(t, recordings)
 	for _, r := range recordings {
 		assert.FileExists(t, r.FilePath)

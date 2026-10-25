@@ -22,32 +22,32 @@ import (
 
 func TestVoicePrompts_EmbeddedSamples(t *testing.T) {
 	t.Parallel()
-	controller := GetControllerVoiceSamples()
+	controller := ControllerVoiceSamples()
 	if len(controller) == 0 {
 		t.Fatal("expected controller voice samples, got none")
 	}
 
-	pilot := GetPilotVoiceSamples()
+	pilot := PilotVoiceSamples()
 	if len(pilot) == 0 {
 		t.Fatal("expected pilot voice samples, got none")
 	}
 
-	telephony := GetTelephonyVoiceSamples()
+	telephony := TelephonyVoiceSamples()
 	if len(telephony) == 0 {
 		t.Fatal("expected telephony voice samples, got none")
 	}
 
-	controllerJA := GetControllerVoiceSamplesJA()
+	controllerJA := ControllerVoiceSamplesJA()
 	if len(controllerJA) == 0 {
 		t.Fatal("expected Japanese controller voice samples, got none")
 	}
 
-	pilotJA := GetPilotVoiceSamplesJA()
+	pilotJA := PilotVoiceSamplesJA()
 	if len(pilotJA) == 0 {
 		t.Fatal("expected Japanese pilot voice samples, got none")
 	}
 
-	telephonyJA := GetTelephonyVoiceSamplesJA()
+	telephonyJA := TelephonyVoiceSamplesJA()
 	if len(telephonyJA) == 0 {
 		t.Fatal("expected Japanese telephony voice samples, got none")
 	}

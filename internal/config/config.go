@@ -238,8 +238,8 @@ func (c *VCSConfig) AddChannel(ch ChannelConfig) {
 	c.Channels = append(c.Channels, ch)
 }
 
-// GetChannels returns a copy of the channel list.
-func (c *VCSConfig) GetChannels() []ChannelConfig {
+// ChannelList returns a copy of the channel list.
+func (c *VCSConfig) ChannelList() []ChannelConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -248,22 +248,22 @@ func (c *VCSConfig) GetChannels() []ChannelConfig {
 	return result
 }
 
-// GetVCS returns a copy of the VCS core configuration.
-func (c *VCSConfig) GetVCS() VCSCoreConfig {
+// Core returns a copy of the VCS core configuration.
+func (c *VCSConfig) Core() VCSCoreConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.VCS
 }
 
-// GetTelephony returns a copy of the telephony configuration.
-func (c *VCSConfig) GetTelephony() TelephonyConfig {
+// TelephonySettings returns a copy of the telephony configuration.
+func (c *VCSConfig) TelephonySettings() TelephonyConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Telephony
 }
 
-// GetRecording returns a copy of the recording configuration.
-func (c *VCSConfig) GetRecording() RecordingConfig {
+// RecordingSettings returns a copy of the recording configuration.
+func (c *VCSConfig) RecordingSettings() RecordingConfig {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Recording

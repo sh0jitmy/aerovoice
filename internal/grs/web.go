@@ -117,13 +117,13 @@ func (w *WebServer) Close() error {
 
 func (w *WebServer) handleIndex(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
-	snap := w.svc.GetSnapshot()
+	snap := w.svc.Snapshot()
 	_ = grsTemplate.Execute(rw, snap)
 }
 
 func (w *WebServer) handleSnapshot(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
-	snap := w.svc.GetSnapshot()
+	snap := w.svc.Snapshot()
 	_ = json.NewEncoder(rw).Encode(snap)
 }
 

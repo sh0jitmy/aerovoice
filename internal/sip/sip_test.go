@@ -96,7 +96,7 @@ func TestSIPNode_PingOptions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, rtt, time.Duration(0))
 
-	optsCount, _ := nodeB.GetOptionsStats()
+	optsCount, _ := nodeB.OptionsStats()
 	assert.Equal(t, uint64(1), optsCount)
 
 	// Test Silent Drop (Supervision fault test)

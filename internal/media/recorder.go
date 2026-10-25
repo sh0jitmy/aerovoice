@@ -292,8 +292,8 @@ func (r *Recorder) StopRecording(sessionID string) (*RecordingMetadata, error) {
 	return &meta, nil
 }
 
-// GetRecordings returns all saved recordings.
-func (r *Recorder) GetRecordings() []RecordingMetadata {
+// Recordings returns all saved recordings.
+func (r *Recorder) Recordings() []RecordingMetadata {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -316,8 +316,8 @@ func (r *Recorder) MaxDurationSeconds() int {
 	return r.maxDurationSeconds
 }
 
-// GetWAVData reads WAV file content for a recording.
-func (r *Recorder) GetWAVData(sessionID string) ([]byte, error) {
+// WAVData reads WAV file content for a recording.
+func (r *Recorder) WAVData(sessionID string) ([]byte, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -338,32 +338,32 @@ func EncodeWAV(samples []int16, sampleRate int) []byte {
 	dataSize := len(samples) * 2
 	chunkSize := 36 + dataSize
 
-	buf := new(bytes.Buffer)
+	var buf bytes.Buffer
 
 	// RIFF Chunk
 	buf.WriteString("RIFF")
 	//nolint:gosec // G115: standard WAV header field
-	_ = binary.Write(buf, binary.LittleEndian, uint32(chunkSize))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(chunkSize))
 	buf.WriteString("WAVE")
 
 	// fmt Sub-chunk
 	buf.WriteString("fmt ")
-	_ = binary.Write(buf, binary.LittleEndian, uint32(16))          // Subchunk1Size (16 for PCM)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(1))           // AudioFormat (1 for PCM)
-	_ = binary.Write(buf, binary.LittleEndian, uint16(numChannels)) // NumChannels
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(16))          // Subchunk1Size (16 for PCM)
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(1))           // AudioFormat (1 for PCM)
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(numChannels)) // NumChannels
 	//nolint:gosec // G115: standard WAV header fields
-	_ = binary.Write(buf, binary.LittleEndian, uint32(sampleRate)) // SampleRate
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(sampleRate)) // SampleRate
 	//nolint:gosec // G115: standard WAV header fields
-	_ = binary.Write(buf, binary.LittleEndian, uint32(byteRate))   // ByteRate
-	_ = binary.Write(buf, binary.LittleEndian, uint16(blockAlign)) // BlockAlign
-	_ = binary.Write(buf, binary.LittleEndian, uint16(bitsPerSample))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(byteRate))   // ByteRate
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(blockAlign)) // BlockAlign
+	_ = binary.Write(&buf, binary.LittleEndian, uint16(bitsPerSample))
 
 	// data Sub-chunk
 	buf.WriteString("data")
 	//nolint:gosec // G115: standard WAV header field
-	_ = binary.Write(buf, binary.LittleEndian, uint32(dataSize))
+	_ = binary.Write(&buf, binary.LittleEndian, uint32(dataSize))
 	for _, s := range samples {
-		_ = binary.Write(buf, binary.LittleEndian, s)
+		_ = binary.Write(&buf, binary.LittleEndian, s)
 	}
 
 	return buf.Bytes()

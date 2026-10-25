@@ -87,54 +87,54 @@ func extractPCMFromWAV(wavData []byte) []int16 {
 	return samples
 }
 
-// GetControllerVoiceSamples returns 8kHz 16-bit PCM for ATC controller English test voice.
+// ControllerVoiceSamples returns 8kHz 16-bit PCM for ATC controller English test voice.
 // "Tokyo Tower, AeroVoice 123. Radio check, radio check. One, two, three, four, five. How do you read?"
-func GetControllerVoiceSamples() []int16 {
+func ControllerVoiceSamples() []int16 {
 	initVoices()
 	out := make([]int16, len(controllerSamplesEn))
 	copy(out, controllerSamplesEn)
 	return out
 }
 
-// GetPilotVoiceSamples returns 8kHz 16-bit PCM for aircraft pilot English test voice.
+// PilotVoiceSamples returns 8kHz 16-bit PCM for aircraft pilot English test voice.
 // "Radio check, radio check. Testing, one, two, three, four, five. Reading you loud and clear."
-func GetPilotVoiceSamples() []int16 {
+func PilotVoiceSamples() []int16 {
 	initVoices()
 	out := make([]int16, len(pilotSamplesEn))
 	copy(out, pilotSamplesEn)
 	return out
 }
 
-// GetTelephonyVoiceSamples returns 8kHz 16-bit PCM for English telephone audio quality test voice.
+// TelephonyVoiceSamples returns 8kHz 16-bit PCM for English telephone audio quality test voice.
 // "This is an ED-137 aeronautical telephone audio quality verification call. Testing, one, two, three, four, five."
-func GetTelephonyVoiceSamples() []int16 {
+func TelephonyVoiceSamples() []int16 {
 	initVoices()
 	out := make([]int16, len(telephonySamplesEn))
 	copy(out, telephonySamplesEn)
 	return out
 }
 
-// GetControllerVoiceSamplesJA returns 8kHz 16-bit PCM for ATC controller Japanese test voice.
+// ControllerVoiceSamplesJA returns 8kHz 16-bit PCM for ATC controller Japanese test voice.
 // "テスト、テスト。本日は晴天なり、本日は晴天なり。"
-func GetControllerVoiceSamplesJA() []int16 {
+func ControllerVoiceSamplesJA() []int16 {
 	initVoices()
 	out := make([]int16, len(controllerSamplesJa))
 	copy(out, controllerSamplesJa)
 	return out
 }
 
-// GetPilotVoiceSamplesJA returns 8kHz 16-bit PCM for aircraft pilot Japanese test voice.
+// PilotVoiceSamplesJA returns 8kHz 16-bit PCM for aircraft pilot Japanese test voice.
 // "テスト、テスト。本日は晴天なり、本日は晴天なり。"
-func GetPilotVoiceSamplesJA() []int16 {
+func PilotVoiceSamplesJA() []int16 {
 	initVoices()
 	out := make([]int16, len(pilotSamplesJa))
 	copy(out, pilotSamplesJa)
 	return out
 }
 
-// GetTelephonyVoiceSamplesJA returns 8kHz 16-bit PCM for telephone audio quality Japanese test voice.
+// TelephonyVoiceSamplesJA returns 8kHz 16-bit PCM for telephone audio quality Japanese test voice.
 // "テスト、テスト。本日は晴天なり、本日は晴天なり。"
-func GetTelephonyVoiceSamplesJA() []int16 {
+func TelephonyVoiceSamplesJA() []int16 {
 	initVoices()
 	out := make([]int16, len(telephonySamplesJa))
 	copy(out, telephonySamplesJa)
@@ -191,8 +191,8 @@ func (p *VoicePromptPlayer) Reset() {
 	p.finished = false
 }
 
-// IsFinished returns true if one-shot playback has completed.
-func (p *VoicePromptPlayer) IsFinished() bool {
+// Finished returns true if one-shot playback has completed.
+func (p *VoicePromptPlayer) Finished() bool {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.finished

@@ -52,7 +52,6 @@ func NewChannelFSM(channelID string) *ChannelFSM {
 	return &ChannelFSM{
 		channelID: channelID,
 		state:     StateDisconnected,
-		listeners: make([]StateListener, 0),
 	}
 }
 
@@ -175,15 +174,15 @@ func (f *ChannelFSM) SquelchOff() {
 	}
 }
 
-// IsPTTActive returns whether PTT is currently engaged.
-func (f *ChannelFSM) IsPTTActive() bool {
+// PTTActive returns whether PTT is currently engaged.
+func (f *ChannelFSM) PTTActive() bool {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return f.pttActive
 }
 
-// IsSQUActive returns whether Squelch is currently engaged.
-func (f *ChannelFSM) IsSQUActive() bool {
+// SQUActive returns whether Squelch is currently engaged.
+func (f *ChannelFSM) SQUActive() bool {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 	return f.squActive

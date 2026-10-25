@@ -117,8 +117,6 @@ func NewRTPSession(cfg RTPSessionConfig) (*RTPSession, error) {
 		cfg.JitterBufferMs = 40
 	}
 
-	ssrcVal, _ := rand.Int(rand.Reader, big.NewInt(0xFFFFFFFF))
-
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session := &RTPSession{
@@ -130,7 +128,7 @@ func NewRTPSession(cfg RTPSessionConfig) (*RTPSession, error) {
 		handler:      cfg.Handler,
 		payloadType:  cfg.PayloadType,
 		ptime:        cfg.Ptime,
-		ssrc:         uint32(ssrcVal.Uint64() & 0xFFFFFFFF), //nolint:gosec // G115: 32-bit random SSRC
+		ssrc:         GenerateRandomSSRC(),
 		currentSQI:   100,
 		ctx:          ctx,
 		cancel:       cancel,
@@ -185,9 +183,9 @@ func (s *RTPSession) SetJitterBufferDepth(depthMs int) {
 	s.jitterBuffer.SetTargetDelay(depthMs)
 }
 
-// GetJitterBufferDepth returns current depth in ms.
-func (s *RTPSession) GetJitterBufferDepth() int {
-	return s.jitterBuffer.GetTargetDelayMs()
+// JitterBufferDepth returns current depth in ms.
+func (s *RTPSession) JitterBufferDepth() int {
+	return s.jitterBuffer.TargetDelayMs()
 }
 
 // StartTx starts sending RTP packets using the given audio generator.

@@ -58,7 +58,7 @@ channels:
 	// Test dynamic update
 	updated := cfg.UpdateChannelURI("ch-twr", "sip:radio-twr@192.168.1.100:5070")
 	assert.True(t, updated)
-	assert.Equal(t, "sip:radio-twr@192.168.1.100:5070", cfg.GetChannels()[0].GRSSIPURI)
+	assert.Equal(t, "sip:radio-twr@192.168.1.100:5070", cfg.ChannelList()[0].GRSSIPURI)
 
 	// Test AddChannel
 	cfg.AddChannel(ChannelConfig{
@@ -67,7 +67,7 @@ channels:
 		Frequency: "121.900 MHz",
 		GRSSIPURI: "sip:radio-gnd@127.0.0.1:5070",
 	})
-	assert.Len(t, cfg.GetChannels(), 2)
+	assert.Len(t, cfg.ChannelList(), 2)
 }
 
 func TestLoadGRSConfig(t *testing.T) {
@@ -138,7 +138,7 @@ vcs:
 	require.NoError(t, os.WriteFile(p1, []byte(yamlData1), 0o600))
 	cfg1, err := LoadVCSConfig(p1)
 	require.NoError(t, err)
-	rec1 := cfg1.GetRecording()
+	rec1 := cfg1.RecordingSettings()
 	assert.Equal(t, 100, rec1.MaxRecordings)
 	assert.Equal(t, 300, rec1.MaxDurationSeconds)
 
@@ -154,7 +154,7 @@ recording:
 	require.NoError(t, os.WriteFile(p2, []byte(yamlData2), 0o600))
 	cfg2, err := LoadVCSConfig(p2)
 	require.NoError(t, err)
-	rec2 := cfg2.GetRecording()
+	rec2 := cfg2.RecordingSettings()
 	assert.Equal(t, 50, rec2.MaxRecordings)
 	assert.Equal(t, 120, rec2.MaxDurationSeconds)
 
@@ -170,7 +170,7 @@ recording:
 	require.NoError(t, os.WriteFile(p3, []byte(yamlData3), 0o600))
 	cfg3, err := LoadVCSConfig(p3)
 	require.NoError(t, err)
-	rec3 := cfg3.GetRecording()
+	rec3 := cfg3.RecordingSettings()
 	assert.Equal(t, 1000, rec3.MaxRecordings, "Must clamp to hard limit 1000")
 	assert.Equal(t, 1800, rec3.MaxDurationSeconds, "Must clamp to hard limit 1800 (30 min)")
 
@@ -179,7 +179,7 @@ recording:
 	t.Setenv("AEROVOICE_VCS_REC_MAX_DURATION_SECONDS", "600")
 	cfg4, err := LoadVCSConfig(p1)
 	require.NoError(t, err)
-	rec4 := cfg4.GetRecording()
+	rec4 := cfg4.RecordingSettings()
 	assert.Equal(t, 200, rec4.MaxRecordings)
 	assert.Equal(t, 600, rec4.MaxDurationSeconds)
 }
