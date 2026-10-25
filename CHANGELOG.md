@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.0.4](https://github.com/sh0jitmy/aerovoice/compare/v0.0.3...v0.0.4) - 2026-09-26
+
+- ci: configure dependabot for go modules and github actions by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/15
+- feat(i18n): add comprehensive English support and GitHub Pages bilingual reports by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/18
+- fix(docs): resolve Mermaid syntax errors in architecture diagrams and align bilingual structure by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/19
+- fix(ci): update dependabot/fetch-metadata commit SHA to valid v2.3.0 hash by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/20
+- ci(deps): bump the github-actions group across 1 directory with 5 updates by @dependabot[bot] in https://github.com/sh0jitmy/aerovoice/pull/21
+
 ## [v0.0.3](https://github.com/sh0jitmy/aerovoice/compare/v0.0.2...v0.0.3) - 2026-09-21
 
 - feat: add windows build commands and fix goreleaser v2 configuration for aerovoice by @sh0jitmy in https://github.com/sh0jitmy/aerovoice/pull/13
