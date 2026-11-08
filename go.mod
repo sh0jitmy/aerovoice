@@ -3,7 +3,7 @@ module github.com/sh0jitmy/aerovoice
 go 1.26.10
 
 require (
-	github.com/emiago/sipgo v1.6.0
+	github.com/emiago/sipgo v1.7.2
 	github.com/google/gopacket v1.1.19
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/rtp/v2 v2.0.0
